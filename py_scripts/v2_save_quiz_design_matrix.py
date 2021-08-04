@@ -58,8 +58,35 @@ print(f"Num unique sessions: {len(quiz_df.index.get_level_values('session_id').u
 print("-----\n")
 
 ##
-quiz_df.to_csv(SAVE_PATH)
-print(f"Saved the full design matrix to {SAVE_PATH}!")
+# level 1 blickets are different depending on the condition
+quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], 'rating_0']
+quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], 'nonblicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], ['rating_1', 'rating_2']].mean(axis=1)
+
+quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], ['rating_0', 'rating_1']].mean(axis=1)
+quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], 'nonblicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], 'rating_2']
+
+quiz_df.loc[pd.IndexSlice[['cc1_c2', 'ncc1_c2'], 1, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['cc1_c2', 'ncc1_c2'], 1, :], ['rating_0', 'rating_1', 'rating_2']].mean(axis=1)
+quiz_df.loc[pd.IndexSlice[['cc1_c2', 'ncc1_c2'], 1, :], 'nonblicket_mean_rating'] = None  # no nonblickets
+
+# level 2 blickets are the same across all conditions
+quiz_df.loc[pd.IndexSlice[:, 2, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[:, 2, :], ['rating_3', 'rating_4', 'rating_5']].mean(axis=1)
+quiz_df.loc[pd.IndexSlice[:, 2, :], 'nonblicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[:, 2, :], ['rating_6', 'rating_7', 'rating_8']].mean(axis=1)
+
+# sanity check:
+# quiz_df[['blicket_mean_rating', 'nonblicket_mean_rating'] + [f'rating_{i}' for i in range(9)]].to_csv('~/Downloads/temp.csv')
+
+##
+# simplify the condition down to just the training form (since this is the only variable manipulated across conditions)
+quiz_df.reset_index(inplace=True)
+quiz_df['training'] = quiz_df.condition.apply(lambda x: x.split('_')[0])
+
+##
+# filter to columns needed for further analysis/plotting
+design_df = quiz_df[['training', 'level', 'session_id', 'blicket_mean_rating', 'nonblicket_mean_rating']]
+
+##
+design_df.to_csv(SAVE_PATH)
+print(f"Saved the full v2 quiz design matrix to {SAVE_PATH}!")
 
 ##
 # f_design_df.to_csv(F_SAVE_PATH)
