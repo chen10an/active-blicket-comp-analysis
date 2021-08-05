@@ -29,20 +29,30 @@ quiz = jmespath.search("[?seq_key=='End'].{sessionId: sessionId, end_time: times
 ##
 # this cell is for TESTING/DEVELOPMENT
 
-# # develop on a single example before putting into loop:
-# level_dict = quiz[0]['quiz_data'][f'level_1']
+# develop on a single example before putting into loop:
+# l_num = 1
+# level_dict = quiz[0]['quiz_data'][f'level_{l_num}']
 
-# # map a teaching example's detector state to a string representation
-# state_to_str = {True: '+', False: '-'}
-# # collapse each teaching example into one string
-# teaching_ex = [ex['blicket_nonblicket_combo'] + ' ' + state_to_str[ex['detector_state']] for ex in level_dict['teaching_ex']]
+# rating_data = np.array([level_dict['blicket_rating_groups'], level_dict['correct_blicket_ratings'], level_dict['blicket_rating_scores']]).T
+# if l_num == 1:
+#     block_ids = np.array([[i for i in range(3)]]).T
+# elif l_num == 2:
+#     block_ids = np.array([[i+3 for i in range(6)]]).T
+
+# rating_data = np.append(rating_data, block_ids, axis = 1)
+
+# # create all the corresponding column and row/index names
+# rating_columns = ['rating', 'true_rating', 'rating_score', 'block']
+
+# pd.DataFrame(data=rating_data, columns=rating_columns)
 
 ##
 # map a teaching example's detector state to a string representation
 state_to_str = {True: '+', False: '-'}
 
 ##
-blicket_rows = []
+rating_sub_df_list = []
+teaching_sub_df_list = []
 for session in quiz:            
     for l_num in [1,2]:        
         level_dict = session['quiz_data'][f'level_{l_num}']
@@ -50,74 +60,80 @@ for session in quiz:
         # collapse each teaching example into one string
         teaching_ex = [ex['blicket_nonblicket_combo'] + ' ' + state_to_str[ex['detector_state']] for ex in level_dict['teaching_ex']]
 
-        
-        # create all the data for one row
-        level_data = level_dict['blicket_rating_groups'] + level_dict['correct_blicket_ratings'] + level_dict['blicket_rating_scores'] + teaching_ex + [level_dict['free_response_0'],  level_dict['free_response_1']] + [session[f'l{l_num}_final_toggle']]
+        # all teaching-related data for one row
+        teaching_data = [teaching_ex + [level_dict['free_response_0'],  level_dict['free_response_1']] + [session[f'l{l_num}_final_toggle']]]
+
+        # all rating-relate data for multiple rows and columns
+        rating_data = np.array([level_dict['blicket_rating_groups'], level_dict['correct_blicket_ratings'], level_dict['blicket_rating_scores']]).T
+        if l_num == 1:
+            block_ids = np.array([[i for i in range(3)]]).T
+        elif l_num == 2:
+            block_ids = np.array([[i+3 for i in range(6)]]).T
+        rating_data = np.append(rating_data, block_ids, axis = 1)
 
         # create all the corresponding column names
-        if l_num == 1:
-            columns = [f'rating_{i}' for i in range(3)] + [f'true_rating_{i}' for i in range(3)] + [f'rating_score_{i}' for i in range(3)]
-        elif l_num == 2:
-            columns = [f'rating_{i+3}' for i in range(6)] + [f'true_rating_{i+3}' for i in range(6)] + [f'rating_score_{i+3}' for i in range(6)]
-
-        columns += [f'ex_{i}' for i in range(5)]
-        columns += ['machine_response', 'strategy_response', 'final_toggle_state']
+        rating_columns = ['rating', 'true_rating', 'rating_score', 'block']
+        teaching_columns = [f'ex_{i}' for i in range(5)] + ['machine_response', 'strategy_response', 'final_toggle_state']
 
         # combine data and column names into a df row
-        level_row = pd.DataFrame(data=[level_data], columns=columns)
-        # the brackets around level_data are needed to recognize it as a row, not column
+        rating_sub_df = pd.DataFrame(data=rating_data, columns=rating_columns)
+        teaching_sub_df = pd.DataFrame(data=teaching_data, columns=teaching_columns)
 
         # make (experiment condition, quiz level, session ID) index
-        level_row['condition'] = session['condition_name']
-        level_row['level'] = l_num
-        level_row['session_id'] = session['sessionId']
+        rating_sub_df['condition'] = session['condition_name']
+        teaching_sub_df['condition'] = session['condition_name']
+        rating_sub_df['level'] = l_num
+        teaching_sub_df['level'] = l_num
+        rating_sub_df['session_id'] = session['sessionId']
+        teaching_sub_df['session_id'] = session['sessionId']
 
-        level_row.set_index(['condition', 'level', 'session_id'], inplace=True)
-        blicket_rows.append(level_row)
+        rating_sub_df.set_index(['condition', 'level', 'session_id', 'block'], inplace=True)
+        teaching_sub_df.set_index(['condition', 'level', 'session_id'], inplace=True)
 
-quiz_df = pd.concat(blicket_rows)
+        rating_sub_df_list.append(rating_sub_df)
+        teaching_sub_df_list.append(teaching_sub_df)
+
+rating_df = pd.concat(rating_sub_df_list)
+teaching_df = pd.concat(teaching_sub_df_list)
 
 # there should only be quiz levels 1,2
-assert set(quiz_df.index.get_level_values('level').unique()) == set([1, 2])
-print("Passed: we have exactly quiz levels 1, 2.")
-print(f"Unique experiment conditions: {list(quiz_df.index.get_level_values('condition').unique())}")
-print(f"Num unique sessions: {len(quiz_df.index.get_level_values('session_id').unique())}")
-print("-----\n")
+# assert set(quiz_df.index.get_level_values('level').unique()) == set([1, 2])
+# print("Passed: we have exactly quiz levels 1, 2.")
+# print(f"Unique experiment conditions: {list(quiz_df.index.get_level_values('condition').unique())}")
+# print(f"Num unique sessions: {len(quiz_df.index.get_level_values('session_id').unique())}")
+# print("-----\n")
 
 ##
 # level 1 blickets are different depending on the condition
-quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], 'rating_0']
-quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], 'nonblicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :], ['rating_1', 'rating_2']].mean(axis=1)
+rating_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :, 0], 'is_blicket'] = 1
+rating_df.loc[pd.IndexSlice[['d1_c2', 'nd1_c2'], 1, :, [1,2]], 'is_blicket'] = 0
 
-quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], ['rating_0', 'rating_1']].mean(axis=1)
-quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], 'nonblicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :], 'rating_2']
+rating_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :, [0, 1]], 'is_blicket'] = 1
+rating_df.loc[pd.IndexSlice[['c1_c2', 'nc1_c2'], 1, :, 2], 'is_blicket'] = 0
 
-quiz_df.loc[pd.IndexSlice[['cc1_c2', 'ncc1_c2'], 1, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[['cc1_c2', 'ncc1_c2'], 1, :], ['rating_0', 'rating_1', 'rating_2']].mean(axis=1)
-quiz_df.loc[pd.IndexSlice[['cc1_c2', 'ncc1_c2'], 1, :], 'nonblicket_mean_rating'] = None  # no nonblickets
+rating_df.loc[pd.IndexSlice[['cc1_c2', 'ncc1_c2'], 1, :, [0, 1, 2]], 'is_blicket'] = 1
 
 # level 2 blickets are the same across all conditions
-quiz_df.loc[pd.IndexSlice[:, 2, :], 'blicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[:, 2, :], ['rating_3', 'rating_4', 'rating_5']].mean(axis=1)
-quiz_df.loc[pd.IndexSlice[:, 2, :], 'nonblicket_mean_rating'] = quiz_df.loc[pd.IndexSlice[:, 2, :], ['rating_6', 'rating_7', 'rating_8']].mean(axis=1)
-
-# sanity check:
-# quiz_df[['blicket_mean_rating', 'nonblicket_mean_rating'] + [f'rating_{i}' for i in range(9)]].to_csv('~/Downloads/temp.csv')
+rating_df.loc[pd.IndexSlice[:, 2, :, [3, 4, 5]], 'is_blicket'] = 1
+rating_df.loc[pd.IndexSlice[:, 2, :, [6, 7, 8]], 'is_blicket'] = 0
 
 ##
 # simplify the condition down to just the training form (since this is the only variable manipulated across conditions)
-quiz_df.reset_index(inplace=True)
-quiz_df['training'] = quiz_df.condition.apply(lambda x: x.split('_')[0])
+for df in [rating_df, teaching_df]:
+    df.reset_index(inplace=True)
+    df['training'] = df.condition.apply(lambda x: x.split('_')[0])
 
 ##
 # split rating vs teaching and filter to columns needed for further analysis/plotting
-rating_df = quiz_df[['training', 'level', 'session_id', 'blicket_mean_rating', 'nonblicket_mean_rating']]
-teaching_df = quiz_df[['training', 'level', 'session_id'] + [f'ex_{i}' for i in range(5)] + ['final_toggle_state', 'machine_response', 'strategy_response']]
+rating_df = rating_df[['training', 'level', 'session_id', 'block', 'is_blicket', 'rating']]
+teaching_df = teaching_df[['training', 'level', 'session_id'] + [f'ex_{i}' for i in range(5)] + ['final_toggle_state', 'machine_response', 'strategy_response']]
 
 ##
-rating_df.to_csv(RATING_SAVE_PATH)
+rating_df.to_csv(RATING_SAVE_PATH, index = False)
 print(f"Saved the v2 quiz rating df to {RATING_SAVE_PATH}!")
 
 ##
-teaching_df.to_csv(TEACHING_SAVE_PATH)
+teaching_df.to_csv(TEACHING_SAVE_PATH, index = False)
 print(f"Saved the v2 quiz teaching df to {TEACHING_SAVE_PATH}!")
 
 ##
