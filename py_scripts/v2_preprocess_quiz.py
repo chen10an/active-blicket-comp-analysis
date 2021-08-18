@@ -6,12 +6,13 @@ import numpy as np
 import pickle
 import jmespath
 import json
+import hashlib
 
 import helperfuns
 
-OUTPUT_DIR_PATH ='../ignore/output/'
-RATING_SAVE_PATH = '../ignore/output/v2_quiz_rating.csv'
-TEACHING_SAVE_PATH = '../ignore/output/v2_quiz_teaching.csv'
+OUTPUT_DIR_PATH ='../ignore/output/v2/'
+RATING_SAVE_PATH = '../ignore/output/v2/quiz_rating.csv'
+TEACHING_SAVE_PATH = '../ignore/output/v2/quiz_teaching.csv'
 
 # TODO: exclude/filter inattentive sessions according to prereg
 # F_SAVE_PATH = '../ignore/output/nine_combo_quiz_design_matrix.csv'
@@ -20,7 +21,7 @@ TEACHING_SAVE_PATH = '../ignore/output/v2_quiz_teaching.csv'
 
 ##
 # good ending chunks
-with open(os.path.join(OUTPUT_DIR_PATH, 'v2_good_endings.json')) as f:
+with open(os.path.join(OUTPUT_DIR_PATH, 'good_endings.json')) as f:
     ending_chunks = json.load(f)
 
 # query chunks json for quiz-related data
@@ -124,9 +125,25 @@ for df in [rating_df, teaching_df]:
     df['training'] = df.condition.apply(lambda x: x.split('_')[0])
 
 ##
+# make a hash to uniquely identify each row of teaching_df without revealing teaching/level/session_id; to be used later for coding
+
+def hash_row(row):
+   legible_id = row.training + str(row.level) + row.session_id  # concatenate all the information needed to identify a row
+
+   # encode and hash to uniquely identify a row without revealing the information above
+   encoding = legible_id.encode()
+   return hashlib.sha256(encoding).hexdigest()
+# test
+# dummy_row = pd.DataFrame([['d1', 1, 'longsessionid123']], columns=["training", "level", "session_id"]).iloc[0]
+# hash_row(dummy_row)
+
+# make hash id for all rows
+teaching_df['hash_id'] = teaching_df.apply(hash_row, axis=1)
+
+##
 # split rating vs teaching and filter to columns needed for further analysis/plotting
 rating_df = rating_df[['training', 'level', 'session_id', 'block', 'is_blicket', 'rating']]
-teaching_df = teaching_df[['training', 'level', 'session_id'] + [f'ex_{i}' for i in range(5)] + ['final_toggle_state', 'machine_response', 'strategy_response']]
+teaching_df = teaching_df[['training', 'level', 'session_id'] + [f'ex_{i}' for i in range(5)] + ['final_toggle_state', 'machine_response', 'strategy_response', 'hash_id']]
 
 ##
 rating_df.to_csv(RATING_SAVE_PATH, index = False)

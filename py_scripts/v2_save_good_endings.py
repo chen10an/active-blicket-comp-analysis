@@ -7,7 +7,7 @@ import pandas as pd
 import jmespath
 
 DATA_DIR_PATH = '../ignore/data/'
-SAVE_PATH = '../ignore/output/v2_good_endings.json'
+SAVE_PATH = '../ignore/output/v2/good_endings.json'
 
 ## %%
 # Get a list of dicts (chunks) and df of MTurk worker IDs for v2
