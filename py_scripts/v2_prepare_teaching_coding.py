@@ -8,11 +8,14 @@ import string
 import hashlib
 
 OUTPUT_DIR_PATH = '../ignore/output/v2/'
-SAVE_PATH = '../ignore/output/v2/todo_teaching_coding.csv'
+
+option_dex = int(input("0 for 200-mturk; 1 for 20x-mturk-micro"))
+teaching_filename = ['quiz_teaching.csv', 'micro_teaching.csv'][option_dex]
+save_path = ['../ignore/output/v2/todo_teaching_coding.csv', '../ignore/output/v2/todo_teaching_coding_micro.csv'][option_dex]
 
 ##
 # load preprocessed teaching data
-teaching_df = pd.read_csv(os.path.join(OUTPUT_DIR_PATH, 'quiz_teaching.csv'))
+teaching_df = pd.read_csv(os.path.join(OUTPUT_DIR_PATH, teaching_filename))
 
 ##
 def make_random_hash_id():
@@ -51,6 +54,8 @@ for i in range(num_random_rows):
     random_6block_row = pd.DataFrame([[make_random_hash_id()] + [make_random_ex(6) for i in range(5)]], columns=coding_cols)
     random_rows.append(random_6block_row)
 
+print(f"Made {len(random_rows)} random rows")
+    
 # add random rows to the coding df
 coding_df = pd.concat([coding_df] + random_rows, ignore_index=True)
 
@@ -77,5 +82,5 @@ for col in ex_cols:
 
 ##
 # save
-coding_df.to_csv(SAVE_PATH, index = False)
-print(f"Saved the coding df to {SAVE_PATH}!")
+coding_df.to_csv(save_path, index = False)
+print(f"Saved the coding df to {save_path}!")
