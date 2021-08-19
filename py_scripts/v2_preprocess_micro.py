@@ -56,7 +56,7 @@ teaching_df = pd.concat(teaching_sub_df_list, ignore_index=True)
 # make a hash to uniquely identify each row of teaching_df without revealing the ground truth information; to be used later for coding
 
 def hash_row(row):
-   legible_id = row.true_form + row.session_id  # concatenate all the information needed to identify a row
+   legible_id = row.condition + row.true_form + row.session_id  # concatenate all the information needed to identify a row
 
    # encode and hash to uniquely identify a row without revealing the information above
    encoding = legible_id.encode()
