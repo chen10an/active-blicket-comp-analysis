@@ -8,14 +8,27 @@ import string
 import hashlib
 
 OUTPUT_DIR_PATH = '../ignore/output/v2/'
+DONE_FILES = ['coding/done_teaching_coding_micro_1.csv', 'coding/done_teaching_coding_20x-mturk_pilot.csv']
+DONE_FILES = [os.path.join(OUTPUT_DIR_PATH, f) for f in DONE_FILES]
 
 option_dex = int(input("0 for 200-mturk; 1 for 20x-mturk-micro"))
 teaching_filename = ['quiz_teaching.csv', 'micro_teaching.csv'][option_dex]
-save_path = ['../ignore/output/v2/todo_teaching_coding.csv', '../ignore/output/v2/todo_teaching_coding_micro.csv'][option_dex]
+save_path = ['../ignore/output/v2/todo_teaching_coding.csv', '../ignore/output/v2/todo_teaching_coding_micro_2-3.csv'][option_dex]
 
 ##
 # load preprocessed teaching data
 teaching_df = pd.read_csv(os.path.join(OUTPUT_DIR_PATH, teaching_filename))
+
+# filter out hashes that have already been coded
+done_sub_dfs = []
+for f in DONE_FILES:
+    done_sub_dfs.append(pd.read_csv(f))
+
+done_df = pd.concat(done_sub_dfs, ignore_index=True)
+done_hash_ids = done_df.hash_id
+# note: there will be overlap in the randomly generated hash_ids across files because they all use the same seed
+teaching_df = teaching_df[~teaching_df.hash_id.isin(done_hash_ids)]
+print(f"{teaching_df.shape[0]} real teaching example sets to code.")
 
 ##
 def make_random_hash_id():
