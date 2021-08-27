@@ -14,12 +14,12 @@ MODELNAME <- "enum-uniform"
 # PRIORSTR <- 'PriorMaker.makeSigmoidPrior(bgToP, blocksMap(phaseNum), true)'
 PRIORSTR <- 'PriorMaker.makeEnumeratedPrior(fformToP, blocksMap(phaseNum), false)'
 LEARNERSTR <- "new PhaseLearner(makePrior(phaseNum))"
-PHASES <- c("c2") #, "d2", "c2")
+PHASES <- c("d1", "nd1", "c1", "nc1", "cc1", "ncc1")
 NSIMS <- 20
-NINTERVENTIONS <- 20
+NINTERVENTIONS <- 12
 
 # check all phases are formatted correctly
-stopifnot(all(grepl("[cd]{1}[123]{1}", PHASES)))
+stopifnot(all(grepl("[ncd]+[123]{1}", PHASES)))
 
 s + '
 val blocksMap = Map[Int, Set[Block]](
@@ -52,6 +52,11 @@ def makeLearner(phaseNum: Int) = {
 s + '
 val d1sim = Simulator(Set("0").map(Block(_)), PriorMaker.disj)
 val c1sim = Simulator(Set("0", "1").map(Block(_)), PriorMaker.conj)
+val nd1sim = Simulator(Set("0").map(Block(_)), PriorMaker.noisy_disj)
+val nc1sim = Simulator(Set("0", "1").map(Block(_)), PriorMaker.noisy_conj)
+
+val cc1sim = Simulator(Set("0", "1", "2").map(Block(_)), PriorMaker.conj3)
+val ncc1sim = Simulator(Set("0", "1", "2").map(Block(_)), PriorMaker.noisy_conj3)
 
 val d2sim = Simulator(Set("0", "1", "2").map(Block(_)), PriorMaker.disj)
 val c2sim = Simulator(Set("0", "1", "2").map(Block(_)), PriorMaker.conj)
@@ -67,7 +72,7 @@ for (phase in PHASES) {
   simstring <- sprintf('
 simResults = %ssim.run(makeLearner(%s), %i, %i)
 allBlocks = blocksMap(%s)
-', phase, sub("*.([0-9])", "\\1", "c2"), NSIMS, NINTERVENTIONS, sub("*.([0-9])", "\\1", "c2"))
+', phase, sub(".*([0-9])", "\\1", phase), NSIMS, NINTERVENTIONS, sub(".*([0-9])", "\\1", phase))
   
   print(simstring)
   
@@ -109,7 +114,7 @@ alreadyConverged.map(_.lastIndexOf(false) + 1 + 1)
       hasConverged <- comboN >= convergeDexVec[simN]
       
       onIdCols <- strsplit(combo, ",") %>% unlist()
-      if (onIdCols[1] == "STOP") {
+      if (length(onIdCols) > 0 & onIdCols[1] == "STOP") {
         break
       }
       
@@ -118,8 +123,12 @@ alreadyConverged.map(_.lastIndexOf(false) + 1 + 1)
                           outcome = outcome,
                           hasConverged = hasConverged)
       rowDT[, (allIdCols) := 0]
-      onIdCols <- paste0("id_", onIdCols)
-      rowDT[, (onIdCols) := 1]
+      
+      if (length(onIdCols) > 0) {
+        # if the intervention chose a non-empty combination of blocks
+        onIdCols <- paste0("id_", onIdCols)
+        rowDT[, (onIdCols) := 1] 
+      }
       
       dtList[[counter]] <- rowDT
       counter <- counter + 1
