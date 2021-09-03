@@ -15,8 +15,9 @@ MODELNAME <- "enum-uniform"
 PRIORSTR <- 'PriorMaker.makeEnumeratedPrior(fformToP, blocksMap(phaseNum), false)'
 LEARNERSTR <- "new PhaseLearner(makePrior(phaseNum))"
 PHASES <- c("d1", "nd1", "c1", "nc1", "cc1", "ncc1")
-NSIMS <- 20
+NSIMS <- 100
 NINTERVENTIONS <- 12
+MAKEPLOTS <- FALSE
 
 # check all phases are formatted correctly
 stopifnot(all(grepl("[ncd]+[123]{1}", PHASES)))
@@ -98,10 +99,16 @@ val alreadyConverged = simResults.map(x => x.map(y => y._3.keys == x.last._3.key
 alreadyConverged.map(_.lastIndexOf(false) + 1 + 1)
   '
   
+  # which joint hypothesis was converged to in simulation x
+  convergeHypVec <- s * '
+simResults.map(x => x.last._3.keys.map(hyp => hyp.blickets.map(b => b.name).toVector.sorted.mkString + "-" + hyp.fform.name).mkString(", "))
+'
+  
   simDT <- data.table(simID = numeric(),
                       nthIntervention = numeric(),
                       outcome = logical(),
-                      hasConverged= logical())
+                      hasConverged= logical(),
+                      convergedHyp=character())
   allIdCols <- s * 'allBlocks.map("id_" + _.name).toArray'
   allIdCols <- sort(allIdCols)
   
@@ -112,6 +119,7 @@ alreadyConverged.map(_.lastIndexOf(false) + 1 + 1)
       combo <- comboMat[simN, comboN]
       outcome <- outcomeMat[simN, comboN]
       hasConverged <- comboN >= convergeDexVec[simN]
+      convergedHyp <- convergeHypVec[simN]
       
       onIdCols <- strsplit(combo, ",") %>% unlist()
       if (length(onIdCols) > 0 & onIdCols[1] == "STOP") {
@@ -121,7 +129,8 @@ alreadyConverged.map(_.lastIndexOf(false) + 1 + 1)
       rowDT <- data.table(simID = simN,  # simN will always uniquely match to this row of data, even when this script is rerun, because a random seed has been set in the scala code
                           nthIntervention = comboN,
                           outcome = outcome,
-                          hasConverged = hasConverged)
+                          hasConverged = hasConverged,
+                          convergedHyp = convergedHyp)
       rowDT[, (allIdCols) := 0]
       
       if (length(onIdCols) > 0) {
@@ -138,39 +147,46 @@ alreadyConverged.map(_.lastIndexOf(false) + 1 + 1)
   simDT <- rbindlist(dtList)
   simDT
   
-  pbi <- 1
-  pbmax <- length(unique(simDT$simID))
-  pb <- txtProgressBar(min = 0, max = pbmax, style = 3)
-  # save one plot per sim
-  for (id in unique(simDT$simID)) {
-    sessDT <- simDT[simID == id]
-    
-    # melt (wide to long) for plotting
-    sessDT <- melt(sessDT, measure.vars = allIdCols, variable.name = "block_id", value.name = "block_state")
-    
-    p <- ggplot(data = sessDT, aes(x = nthIntervention, y = block_state, fill = outcome)) +
-      geom_col(width = 0.1) +
-      scale_fill_brewer(palette = "Dark2", direction = -1) +
-      facet_grid("block_id ~ .") +
-      geom_vline(xintercept = which(sessDT$hasConverged)[1], linetype="dotted") +  # put a vertical line at the first intervention where the highest probability density hypotheses has already converged (i.e., match with the last intervention)
-      theme_pubr() +
-      theme(panel.spacing = unit(0, "lines"),
-            axis.text.y=element_blank(),
-            axis.ticks.y=element_blank())
-    
-    # TODO: indicate space/prior, phase and form
-    
-    # create the save path if it doesn't exist and then save
-    saveDir <- sprintf("plots/sims/%s/%s", MODELNAME, phase)
-    saveFile <- sprintf("%s_%s.png", phase, id)
-    if (!dir.exists(saveDir)) {
-      dir.create(saveDir, recursive = TRUE)
-    }
-    save_plot(file.path(saveDir, saveFile), plot = p, base_width = 3, base_height = 2)
-    
-    setTxtProgressBar(pb, pbi)
-    pbi <- pbi + 1
+  # save dt produced by this simulation and used for the plot
+  saveDir <- sprintf("plots/sims/%s/%s", MODELNAME, phase)
+  saveFile <- sprintf("%s_1-%s.csv", phase, NSIMS)
+  if (!dir.exists(saveDir)) {
+    dir.create(saveDir, recursive = TRUE)
   }
-  close(pb)
+  fwrite(simDT, file.path(saveDir, saveFile))
+  
+  if (MAKEPLOTS) {
+    pbi <- 1
+    pbmax <- length(unique(simDT$simID))
+    pb <- txtProgressBar(min = 0, max = pbmax, style = 3)
+    # save one plot per sim
+    for (id in unique(simDT$simID)) {
+      sessDT <- simDT[simID == id]
+      
+      # melt (wide to long) for plotting
+      sessDT <- melt(sessDT, measure.vars = allIdCols, variable.name = "block_id", value.name = "block_state")
+      
+      # TODO: label converged form on plot
+      p <- ggplot(data = sessDT, aes(x = nthIntervention, y = block_state, fill = outcome)) +
+        geom_col(width = 0.1) +
+        scale_fill_brewer(palette = "Dark2", direction = -1) +
+        facet_grid("block_id ~ .") +
+        geom_vline(xintercept = which(sessDT$hasConverged)[1], linetype="dotted") +  # put a vertical line at the first intervention where the highest probability density hypotheses has already converged (i.e., match with the last intervention)
+        theme_pubr() +
+        theme(panel.spacing = unit(0, "lines"),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank())
+      
+      # TODO: indicate space/prior, phase and form
+      
+      # create the save path if it doesn't exist and then save
+      saveFile <- sprintf("%s_%s.png", phase, id)
+      save_plot(file.path(saveDir, saveFile), plot = p, base_width = 3, base_height = 2)
+      
+      setTxtProgressBar(pb, pbi)
+      pbi <- pbi + 1
+    }
+    close(pb)
+  }
   
 }
