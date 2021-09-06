@@ -88,11 +88,14 @@ coded_df['coded_short_form'] = coded_df.apply(convert_to_shorthand_form, axis=1)
 # disagreement ratio when there are multiple coders
 num_disagreements = (coded_df.groupby('hash_id').coded_short_form.nunique() > 1).sum()
 
-print(f"Disagreements: {num_disagreements}/{len(coded_df.groupby('hash_id'))} = {num_disagreements/len(coded_df.groupby('hash_id'))}")
+print(f"Disagreements (with random rows): {num_disagreements}/{len(coded_df.groupby('hash_id'))} = {num_disagreements/len(coded_df.groupby('hash_id'))}")
 
 ##
 # join on hash id, getting rid of the randomly generated rows
 merged_df = truth_df.merge(coded_df, on='hash_id', how='inner')
+
+num_disagreements_no_rand = (merged_df.groupby('hash_id').coded_short_form.nunique() > 1).sum()
+print(f"Disagreements (no random rows): {num_disagreements_no_rand}/{len(merged_df.groupby('hash_id'))} = {num_disagreements_no_rand/len(merged_df.groupby('hash_id'))}")
 
 ##
 BONUS = 0.08  # possible bonus per set/level of teaching questions per coder
