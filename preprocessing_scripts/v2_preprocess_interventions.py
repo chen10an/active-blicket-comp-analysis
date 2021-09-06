@@ -5,6 +5,7 @@ import pandas as pd
 import json
 import jmespath
 import numpy as np
+import os
 
 SKIP_PILOT = True
 OUTPUT_DIR_PATH ='../ignore/output/v2/'
@@ -78,8 +79,8 @@ assert(task_dfs[2].phase.unique() == ['c2'])
 # save
 save_path_1 = os.path.join(OUTPUT_DIR_PATH, 'interventions1.csv')
 task_dfs[1].to_csv(save_path_1)
-print(f"Saved phase 1 interventions to {save_path_1}!")
+print(f"Saved phase 1 interventions to {save_path_1} (num participants: {len(task_dfs[1].session_id.unique())}; SKIP_PILOT={SKIP_PILOT})!")
 
 save_path_2 = os.path.join(OUTPUT_DIR_PATH, 'interventions2.csv')
 task_dfs[2].to_csv(save_path_2)
-print(f"Saved phase 2 interventions to {save_path_2}!")
+print(f"Saved phase 2 interventions to {save_path_2} (num participants: {len(task_dfs[2].session_id.unique())}; SKIP_PILOT={SKIP_PILOT})!")

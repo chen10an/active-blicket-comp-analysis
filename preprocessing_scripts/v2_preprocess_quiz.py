@@ -7,8 +7,9 @@ import pickle
 import jmespath
 import json
 import hashlib
+import os
 
-import helperfuns
+# TODO: skip pilot
 
 OUTPUT_DIR_PATH ='../ignore/output/v2/'
 RATING_SAVE_PATH = '../ignore/output/v2/quiz_rating.csv'
