@@ -8,32 +8,41 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Qt5Agg')
 
-BONUS = 0.16  # possible bonus per set/level of teaching questions
 OUTPUT_DIR_PATH = '../ignore/output/v2/'
 CODING_DIR_PATH = '../ignore/output/v2/coding/'
 
-option_dex = int(input("0 for 200-mturk pilot; 1 for 20x-mturk-micro unfinished coding"))
-truth_filename = ['quiz_teaching.csv', 'micro_teaching.csv'][option_dex]
-coded_filename = ['done_teaching_coding_20x-mturk_pilot.csv', 'doing_teaching_coding_micro.csv'][option_dex]
-save_path = ['../ignore/output/v2/coding/bonus_teaching_coding_20x-mturk_pilot.csv', '../ignore/output/v2/coding/bonus_teaching_coding_micro.csv'][option_dex]
+coded_files = ['done_teaching_coding_20x-mturk_pilot.csv', 'done_teaching_coding_micro_1.csv', 'coder2_done_teaching_coding_micro_1.csv', 'done_teaching_coding_micro_2-3.csv', 'coder2_done_teaching_coding_micro_2-3.csv']
+print("coded files:", coded_files)
+coded_dex_start = int(input("starting dex for choosing from above: "))
+coded_dex_end = int(input("ending dex (exclusive) for choosing from above: "))
+coded_files = coded_files[coded_dex_start:coded_dex_end]
 
+truth_file = ['quiz_teaching.csv', 'micro_teaching.csv']
+print("truth file:", truth_file)
+truth_dex = int(input("ONE dex for choosing from above: "))
+truth_file = truth_file[truth_dex]
+
+##
 # load coded teaching examples
-coded_df = pd.read_csv(os.path.join(CODING_DIR_PATH, coded_filename))
+coded_df_list = []
+for f in coded_files:
+    coded_df_list.append(pd.read_csv(os.path.join(CODING_DIR_PATH, f)))
+coded_df = pd.concat(coded_df_list, keys=[i for i in range(len(coded_df_list))])
 
 # load teaching examples with their associated ground truth information (i.e., session_id, training/form, level)
-truth_df = pd.read_csv(os.path.join(OUTPUT_DIR_PATH, truth_filename))
+truth_df = pd.read_csv(os.path.join(OUTPUT_DIR_PATH, truth_file))
 
 ##
 # label every row with a shorthand name for the ground truth form
 
-if option_dex == 0:
+if truth_file == 'quiz_teaching.csv':
     # for level 1, the shorthand name is just the same as training without the level '1' part
     truth_df.loc[truth_df.level == 1, 'true_short_form'] = truth_df.loc[truth_df.level == 1].training.apply(lambda x: x.replace('1', ''))
 
     # the level 2 form is always 'c' (deterministic conjunctive)
     truth_df.loc[truth_df.level == 2, 'true_short_form'] = 'c'
     
-elif option_dex == 1:
+elif truth_file == 'micro_teaching.csv':
     long_to_shorthand_form = {
         'disj': 'd',
         'noisy_conj': 'nc',
@@ -45,11 +54,6 @@ elif option_dex == 1:
         }
 
     truth_df['true_short_form'] = truth_df.apply(lambda row: long_to_shorthand_form[row.true_form], axis=1)
-
-##
-# join on hash id, getting rid of the randomly generated rows
-merged_df = truth_df.merge(coded_df, on='hash_id', how='left')
-
 ##
 # match coding to corresponding shorthand name for the ground truth form
 # format is (form, is_noisy): shorthand form
@@ -67,6 +71,9 @@ def convert_to_shorthand_form(row):
         # if the coded form is nan, check if it has been labeled inside/outside (exclusively)
         # XOR:
         assert((row.is_inside or row.is_outside) and (row.is_inside != row.is_outside))
+        # if assertion error, diagnose with:
+        # coded_df[pd.isnull(coded_df.form) & ~coded_df.is_inside & ~coded_df.is_outside]
+        # coded_df[pd.isnull(coded_df.form) & coded_df.is_inside & coded_df.is_outside]
         
         if row.is_inside:
             return 'inside'
@@ -75,9 +82,21 @@ def convert_to_shorthand_form(row):
     
     return code_to_shorthand_form[(row.form, row.is_noisy)]
 
-merged_df['coded_short_form'] = merged_df.apply(convert_to_shorthand_form, axis=1)
+coded_df['coded_short_form'] = coded_df.apply(convert_to_shorthand_form, axis=1)
 
 ##
+# disagreement ratio when there are multiple coders
+num_disagreements = (coded_df.groupby('hash_id').coded_short_form.nunique() > 1).sum()
+
+print(f"Disagreements: {num_disagreements}/{len(coded_df.groupby('hash_id'))} = {num_disagreements/len(coded_df.groupby('hash_id'))}")
+
+##
+# join on hash id, getting rid of the randomly generated rows
+merged_df = truth_df.merge(coded_df, on='hash_id', how='inner')
+
+##
+BONUS = 0.08  # possible bonus per set/level of teaching questions per coder
+
 merged_df['is_correct'] = False
 merged_df.loc[merged_df.coded_short_form == merged_df.true_short_form, 'is_correct'] = True
 
@@ -147,9 +166,6 @@ wrong_df.groupby('true_short_form')[['wrong_next', 'wrong_prev', 'is_inside', 'i
 plt.show()
 
 ##
-# any order effects?
-
-##
 # filter out columns not needed for mturk bonusing
 bonus_df = merged_df[['session_id', 'BonusAmount']]
 
@@ -158,6 +174,7 @@ bonus_df = bonus_df.groupby('session_id').sum()
 
 ##
 # save
+save_path = os.path.join(CODING_DIR_PATH, 'bonus_teaching_coding_micro_2-3.csv')
 # bonus_df.to_csv(save_path)
 # print(f"Saved the bonus df to {save_path}!")
 

@@ -44,10 +44,12 @@ for chunk in data_list:
     if filtered_df.session_id.str.contains(chunk['sessionId']).any():
         filtered_chunks.append(chunk)
 
-print(f"Number of good chunks that match to the filtered participant IDs: {len(filtered_chunks)}")
+print(f"Number of chunks that match to the filtered participant IDs: {len(filtered_chunks)}")
 ## %%
 # finally get just the good ending chunks, where participants did not reach a trouble ending by failing comprehension or captcha checks
 good_endings = jmespath.search("[?seq_key=='End'] | [?!is_trouble]", filtered_chunks)
+
+print(f"Final number of chunks that are also not trouble: {len(good_endings)}")
 
 ##%%
 with open(save_path, 'w') as f:
