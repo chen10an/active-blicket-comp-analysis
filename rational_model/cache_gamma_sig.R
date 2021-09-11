@@ -22,7 +22,7 @@ gammaCdf <- function(x, shape, scale) {
   pgamma(x, shape, scale = scale)
 }
 
-# use the cdf to the probability for each bin (represented by the leftmost value, e.g. 0 represents the 0-1 bin for gain)
+# use the cdf to calculate the probability for each bin (represented by the leftmost value, e.g. 0 represents the 0-1 bin for gain)
 biasDT <- data.table(val = biasVals)
 biasDT[, cumulative_p := gammaCdf(val, biasShape, biasScale)]
 biasDT[, p := shift(cumulative_p, type = "lead") - cumulative_p]
@@ -40,6 +40,8 @@ getJointP <- function(dt) {
   biasDT[val == dt$bias]$p * gainDT[val == dt$gain]$p
 }
 grid <- grid[, .(bias, gain, jointP = getJointP(.SD)), by = row.names(grid)]
+
+# make sure the discrete approximation grid covers about all of the original continuous density, up to 3 decimal places
 stopifnot(round(sum(grid$jointP, na.rm = TRUE), 3) == 1)
 
 # final normalization to make sure everything sums up to exactly 1

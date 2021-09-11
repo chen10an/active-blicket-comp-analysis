@@ -2,11 +2,19 @@ library(data.table)
 library(magrittr)
 library(ggplot2)
 library(cowplot)
-source("../R_plots_and_stats/plotting_helperfuns.R")
+source("../plots_and_stats/plotting_helperfuns.R")
+source("helperfuns.R")
 
-phaseDT <- list(fread(file = '../ignore/output/interventions1.csv'),
-                fread(file = '../ignore/output/interventions2.csv'),
-                fread(file = '../ignore/output/interventions3.csv'))
+# SET THESE VARS -----
+SAVE_PATH_PREFIX = "plots/participants/v2"
+phaseDT <- list(fread(file = '../ignore/output/v2/interventions1.csv'),
+                fread(file = '../ignore/output/v2/interventions2.csv')
+                # fread(file = '../ignore/output/interventions1.csv'),
+                # fread(file = '../ignore/output/interventions2.csv'),
+                # fread(file = '../ignore/output/interventions3.csv')
+                )
+
+# THEN RUN THE REST:
 for (i in 1:length(phaseDT)) {
  phaseDT[[i]]$timestamp = as.POSIXct(phaseDT[[i]]$timestamp/1000, origin="1970-01-01") 
  phaseDT[[i]][, nthIntervention := rowid(session_id)]
@@ -43,7 +51,11 @@ for (i in 1:length(phaseDT)) {
             axis.text.y=element_blank(),
             axis.ticks.y=element_blank())
 
-    save_plot(sprintf("human_intervention_plots/p%i_individuals/%s_%s.png", i, unique(sessDT$phase), sess), plot = p, base_width = 3, base_height = 2)
+    saveDir <- file.path(SAVE_PATH_PREFIX, sprintf("p%i_individuals", i))
+    createDirs(saveDir)
+    savePath <- file.path(saveDir, sprintf("/%s_%s.png", unique(sessDT$phase), sess))
+    
+    save_plot(savePath, plot = p, base_width = 3, base_height = 2)
 
     setTxtProgressBar(pb, pbi)
     pbi <- pbi + 1
