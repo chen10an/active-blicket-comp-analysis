@@ -1,24 +1,28 @@
 library(data.table)
 library(magrittr)
 library(rscala)
+source("helperfuns.R")
 source("../plots_and_stats/plotting_helperfuns.R")
 s <- scala(JARs = "~/projects/active-overhypo-learner/target/scala-2.13/active-overhypothesis-learner_2.13-0.0.0.jar")
 s + '
 import utils._
 import learner._
 '
+
+# SET THESE VARS -----
 grid <- fread("cache/bias-shape=5-scale=0.1_gain-shape=100-scale=0.1_grid.csv")
 
 # MODELNAME <- "sigPrag-5-0.1-100-0.1"
-MODELNAME <- "enum-uniform"
+MODELNAME <- "enum-uniform-afterOptimizingMarg"
 # PRIORSTR <- 'PriorMaker.makeSigmoidPrior(bgToP, blocksMap(phaseNum), true)'
 PRIORSTR <- 'PriorMaker.makeEnumeratedPrior(fformToP, blocksMap(phaseNum), false)'
 LEARNERSTR <- "new PhaseLearner(makePrior(phaseNum))"
-PHASES <- c("d1", "nd1", "c1", "nc1", "cc1", "ncc1")
+PHASES <- c("nd1")# , "d1") #"c1", "nc1", "cc1", "ncc1")
 NSIMS <- 100
 NINTERVENTIONS <- 12
 MAKEPLOTS <- FALSE
 
+# THEN RUN THE REST -----
 # check all phases are formatted correctly
 stopifnot(all(grepl("[ncd]+[123]{1}", PHASES)))
 
@@ -101,8 +105,12 @@ alreadyConverged.map(_.lastIndexOf(false) + 1 + 1)
   
   # which joint hypothesis was converged to in simulation x
   convergeHypVec <- s * '
-simResults.map(x => x.last._3.keys.map(hyp => hyp.blickets.map(b => b.name).toVector.sorted.mkString + "-" + hyp.fform.name).mkString(", "))
+// get converged hypothesis before the stop event
+val stopEvent = Event(Set(Block("STOP")), false)
+  
+simResults.map(x => x.filter(_._1 != stopEvent).last._3.keys.map(hyp => hyp.blickets.map(b => b.name).toVector.sorted.mkString + "-" + hyp.fform.name).mkString(", "))
 '
+  convergeHypVec
   
   simDT <- data.table(simID = numeric(),
                       nthIntervention = numeric(),
@@ -149,10 +157,8 @@ simResults.map(x => x.last._3.keys.map(hyp => hyp.blickets.map(b => b.name).toVe
   
   # save dt produced by this simulation and used for the plot
   saveDir <- sprintf("plots/sims/%s/%s", MODELNAME, phase)
+  createDirs(saveDir)
   saveFile <- sprintf("%s_1-%s.csv", phase, NSIMS)
-  if (!dir.exists(saveDir)) {
-    dir.create(saveDir, recursive = TRUE)
-  }
   fwrite(simDT, file.path(saveDir, saveFile))
   
   if (MAKEPLOTS) {
