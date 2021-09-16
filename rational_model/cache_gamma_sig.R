@@ -1,19 +1,19 @@
 library(data.table)
 library(magrittr)
 
+# bias: gamma mean at 5*0.1=0.5
+biasShape <- 5
+biasScale <- 0.1
+xs <- seq(0, 3, 0.15)
+dgamma(xs, biasShape, scale=biasScale) %>% plot(x = xs)
+
 # gain: gamma mean at 100*0.1=10
 gainShape <- 100
 gainScale <- 0.1
 xs <- seq(0, 20, 0.1)
 dgamma(xs, gainShape, scale=gainScale) %>% plot(x = xs)
 
-# bias: gamma mean at 5*0.1=0.5
-biasShape <- 5
-biasScale <- 0.1
-xs <- seq(0, 2, 0.01)
-dgamma(xs, biasShape, scale=biasScale) %>% plot(x = xs)
-
-biasVals <- seq(0, 2, 0.1)
+biasVals <- seq(0, 3, 0.15)
 gainVals <- seq(0, 20, 1)
 grid <- expand.grid(biasVals, gainVals) %>% as.data.table()
 setnames(grid, colnames(grid), c("bias", "gain"))
@@ -52,4 +52,6 @@ stopifnot(sum(grid$jointP, na.rm = TRUE) == 1)
 grid <- grid[!is.na(jointP)]
 
 grid[, row.names := NULL]
-fwrite(grid, file = sprintf("cache/bias-shape=%i-scale=%.2f_gain-shape=%i-scale=%.2f_grid.csv", biasShape, biasScale, gainShape, gainScale))
+savePath <- sprintf("cache/bias-shape=%i-scale=%.2f_gain-shape=%i-scale=%.2f_grid.csv", biasShape, biasScale, gainShape, gainScale)
+fwrite(grid, file = savePath)
+print(sprintf("Saved to %s!", savePath))

@@ -17,7 +17,7 @@ SAVEDIR <- "cache/main"  # main model, no ablations
 createDirs(SAVEDIR)
 
 # sigmoid grid:
-grid <- fread("cache/bias-shape=5-scale=0.1_gain-shape=100-scale=0.1_grid.csv")
+grid <- fread("cache/bias-shape=5-scale=0.10_gain-shape=100-scale=0.10_grid.csv")
 s + '
 // create a lookup table for the joint gamma densities of biases and gains
 var bgToP = Map.empty[(Double, Double),Double]
