@@ -16,10 +16,11 @@ DONE_FILES = [os.path.join(OUTPUT_DIR_PATH, f) for f in DONE_FILES]
 # option_dex = int(input("0 for 200-mturk; 1 for 20x-mturk-micro"))
 option_dex = 0
 teaching_filename = ['quiz_teaching.csv', 'micro_teaching.csv'][option_dex]
-save_path = ['../ignore/output/v2/todo_teaching_coding_first209.csv', '../ignore/output/v2/todo_teaching_coding_micro_2-3.csv'][option_dex]
+save_path = ['../ignore/output/v2/todo_teaching_coding_last39.csv', '../ignore/output/v2/todo_teaching_coding_micro_2-3.csv'][option_dex]
 
-# don't process participants after this timestamp; this is for separating out which participants need more urgent coding
-EARLIEST_ENDTIME = pd.Timestamp('2021-09-15 00:00:00')
+# don't process participants outside these timestamps; this is for separating out which participants need more urgent coding and which can be coded later; endpoints are inclusive
+MIN_ENDTIME = pd.Timestamp('2021-09-15 00:00:00')
+MAX_ENDTIME = pd.Timestamp('2021-09-21 00:00:00')
 
 ##
 # **JUST RUN THE BELOW CELLS**
@@ -37,8 +38,8 @@ done_hash_ids = done_df.hash_id
 # note: there will be overlap in the randomly generated hash_ids across files because they all use the same seed
 teaching_df = teaching_df[~teaching_df.hash_id.isin(done_hash_ids)]
 
-# filter out based on earliest endtime
-teaching_df = teaching_df[pd.to_datetime(teaching_df.end_time, unit='ms') <= EARLIEST_ENDTIME]
+# filter out based on min/max endtimes
+teaching_df = teaching_df[(pd.to_datetime(teaching_df.end_time, unit='ms') >= MIN_ENDTIME) & (pd.to_datetime(teaching_df.end_time, unit='ms') <= MAX_ENDTIME)]
 
 print(f"{teaching_df.shape[0]} real teaching example sets to code.")
 
