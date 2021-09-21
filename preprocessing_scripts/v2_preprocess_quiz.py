@@ -63,7 +63,7 @@ for session in quiz:
         teaching_ex = [ex['blicket_nonblicket_combo'] + ' ' + state_to_str[ex['detector_state']] for ex in level_dict['teaching_ex']]
 
         # all teaching-related data for one row
-        teaching_data = [teaching_ex + [level_dict['free_response_0'],  level_dict['free_response_1']] + [session[f'l{l_num}_final_toggle']]]
+        teaching_data = [teaching_ex + [level_dict['free_response_0'],  level_dict['free_response_1']] + [session[f'l{l_num}_final_toggle']] + [session['end_time']]]
 
         # all rating-relate data for multiple rows and columns
         rating_data = np.array([level_dict['blicket_rating_groups'], level_dict['correct_blicket_ratings'], level_dict['blicket_rating_scores']]).T
@@ -75,7 +75,7 @@ for session in quiz:
 
         # create all the corresponding column names
         rating_columns = ['rating', 'true_rating', 'rating_score', 'block']
-        teaching_columns = [f'ex_{i}' for i in range(5)] + ['machine_response', 'strategy_response', 'final_toggle_state']
+        teaching_columns = [f'ex_{i}' for i in range(5)] + ['machine_response', 'strategy_response', 'final_toggle_state', 'end_time']
 
         # combine data and column names into a df row
         rating_sub_df = pd.DataFrame(data=rating_data, columns=rating_columns)
@@ -144,7 +144,7 @@ teaching_df['hash_id'] = teaching_df.apply(hash_row, axis=1)
 ##
 # split rating vs teaching and filter to columns needed for further analysis/plotting
 rating_df = rating_df[['training', 'level', 'session_id', 'block', 'is_blicket', 'rating']]
-teaching_df = teaching_df[['training', 'level', 'session_id'] + [f'ex_{i}' for i in range(5)] + ['final_toggle_state', 'machine_response', 'strategy_response', 'hash_id']]
+teaching_df = teaching_df[['training', 'level', 'session_id'] + [f'ex_{i}' for i in range(5)] + ['final_toggle_state', 'machine_response', 'strategy_response', 'hash_id', 'end_time']]
 
 ##
 rating_df.to_csv(RATING_SAVE_PATH, index = False)
