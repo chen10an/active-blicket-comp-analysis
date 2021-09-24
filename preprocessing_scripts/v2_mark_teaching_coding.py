@@ -11,7 +11,14 @@ matplotlib.use('Qt5Agg')
 OUTPUT_DIR_PATH = '../ignore/output/v2/'
 CODING_DIR_PATH = '../ignore/output/v2/coding/'
 
-coded_files = ['done_teaching_coding_20x-mturk_pilot.csv', 'done_teaching_coding_micro_1.csv', 'coder2_done_teaching_coding_micro_1.csv', 'done_teaching_coding_micro_2-3.csv', 'coder2_done_teaching_coding_micro_2-3.csv']
+coded_files = ['done_teaching_coding_20x-mturk_pilot.csv',
+               'done_teaching_coding_micro_1.csv',
+               'coder2_done_teaching_coding_micro_1.csv',
+               'done_teaching_coding_micro_2-3.csv',
+               'coder2_done_teaching_coding_micro_2-3.csv',
+               'done_teaching_coding_first209_full.csv',
+               'coder2_done_teaching_coding_first209_full.csv'
+               ]
 print("coded files:", coded_files)
 coded_dex_start = int(input("starting dex for choosing from above: "))
 coded_dex_end = int(input("ending dex (exclusive) for choosing from above: "))
@@ -111,64 +118,6 @@ merged_df.loc[merged_df.is_correct, 'BonusAmount'] = BONUS
 merged_df[['true_short_form', 'coded_short_form', 'is_correct', 'BonusAmount']]
 
 ##
-# plot
-# merged_df.groupby('true_short_form').is_correct.mean().plot.bar()
-# plt.show()
-
-##
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
-labels = ['d', 'nd', 'c', 'nc', 'cc', 'ncc', 'p', 'inside', 'outside'] 
-cm = confusion_matrix(y_true=merged_df.true_short_form, y_pred=merged_df.coded_short_form, labels=labels)
-ConfusionMatrixDisplay(cm, display_labels=labels).plot()
-plt.show()
-
-##
-merged_df.loc[(merged_df.true_short_form == 'ncc') & (merged_df.coded_short_form == 'ncc'), ['condition'] + [f'ex_{i}_x' for i in range(5)]]
-
-##
-ordered_forms = ['d', 'nd', 'c', 'nc', 'cc', 'ncc']
-
-# whether a form has been misclassified by exactly diff indices in ordered_forms
-def has_diff(row, diff):
-    if row.true_short_form == 'p':
-        return False
-    
-    true_dex = ordered_forms.index(row.true_short_form)
-
-    # extremities
-    if true_dex+diff < 0 or true_dex+diff >= len(ordered_forms):
-        return False
-    
-    return row.coded_short_form == ordered_forms[true_dex+diff]
-
-merged_df['wrong_prev'] = merged_df.apply(lambda row: has_diff(row, -1), axis=1)
-
-merged_df['wrong_next'] = merged_df.apply(lambda row: has_diff(row, 1), axis=1)
-
-##
-wrong_df = merged_df[~merged_df.is_correct]
-
-# misclassifications that are not captured by next/prev/inside/outside
-wrong_other_mask = (wrong_df[['wrong_next', 'wrong_prev', 'is_inside', 'is_outside']].apply(lambda row: row.sum(), axis=1) == 0)
-
-wrong_df.loc[:, 'wrong_other'] = False
-wrong_df.loc[wrong_other_mask, 'wrong_other'] = True
-
-# check that only one type of wrong applies at a time
-assert(all(wrong_df[['wrong_next', 'wrong_prev', 'is_inside', 'is_outside', 'wrong_other']].apply(lambda row: row.sum(), axis=1) == 1))
-
-##
-# set order for plotting below
-from pandas.api.types import CategoricalDtype
-cat_type = CategoricalDtype(categories=ordered_forms + ['p'], ordered=True)
-wrong_df['true_short_form'] = wrong_df.true_short_form.astype(cat_type)
-
-##
-wrong_df.groupby('true_short_form')[['wrong_next', 'wrong_prev', 'is_inside', 'is_outside', 'wrong_other']].sum().plot.bar(stacked=True)
-plt.show()
-
-##
 # filter out columns not needed for mturk bonusing
 bonus_df = merged_df[['session_id', 'BonusAmount']]
 
@@ -177,7 +126,7 @@ bonus_df = bonus_df.groupby('session_id').sum()
 
 ##
 # save
-save_path = os.path.join(CODING_DIR_PATH, 'bonus_teaching_coding_micro_2-3.csv')
+save_path = os.path.join(CODING_DIR_PATH, 'bonus_teaching_coding_first209_full.csv')
 # bonus_df.to_csv(save_path)
 # print(f"Saved the bonus df to {save_path}!")
 
