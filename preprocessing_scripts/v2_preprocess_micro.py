@@ -13,6 +13,7 @@ import helperfuns
 
 OUTPUT_DIR_PATH ='../ignore/output/v2/'
 TEACHING_SAVE_PATH = '../ignore/output/v2/micro_teaching.csv'
+FULL_SAVE_PATH = '../ignore/output/v2/micro_teaching_full.csv'  # for saving full teaching df, including participant's free response description of a custom form
 
 ##
 # good ending chunks
@@ -35,11 +36,13 @@ for session in quiz:
         # collapse each teaching example into one string
         teaching_ex = [ex['blicket_nonblicket_combo'] + ' ' + state_to_str[ex['detector_state']] for ex in level_dict['teaching_ex']]
 
+        participant_form_response = level_dict['participant_form_response']
+        
         # all teaching-related data for one row
-        teaching_data = [teaching_ex]
+        teaching_data = [teaching_ex + [participant_form_response]]
 
         # create all the corresponding column names
-        teaching_columns = [f'ex_{i}' for i in range(5)]
+        teaching_columns = [f'ex_{i}' for i in range(5)] + ['participant_form']
 
         # combine data and column names into a df row
         teaching_sub_df = pd.DataFrame(data=teaching_data, columns=teaching_columns)
@@ -68,6 +71,10 @@ def hash_row(row):
 
 # make hash id for all rows
 teaching_df['hash_id'] = teaching_df.apply(hash_row, axis=1)
+
+## save full df
+teaching_df.to_csv(FULL_SAVE_PATH, index = False)
+print(f"Saved the *full* v2 micro teaching df to {FULL_SAVE_PATH}!")
 
 ##
 # filter to columns needed for further analysis/plotting
