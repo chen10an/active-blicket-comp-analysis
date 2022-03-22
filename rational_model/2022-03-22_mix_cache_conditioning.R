@@ -5,7 +5,18 @@ library(magrittr)
 library(ggplot2)
 library(rscala)
 library(progress)
+library(optparse)
 source("helperfuns.R")
+
+parser <- OptionParser()
+parser <- add_option(parser, c("-i", "--interventions_dir"), type="character", default="../ignore/output/v2/", 
+                     help="Directory with preprocessed interventions data [default %default]")
+parser <- add_option(parser, c("-c", "--cache_dir"), type="character", default="cache", 
+                     help="Directory with cached output [default %default]")
+parser <- add_option(parser, c("-m", "--mix_weight"), type="double", default=1, 
+                     help="Mixture weight for the phase 1 posterior distribution [default %default]")
+args <- parse_args(parser)
+
 s <- scala(JARs = "~/projects/active-overhypo-learner/target/scala-2.13/active-overhypothesis-learner_2.13-0.0.0.jar")
 s + '
 import utils._
@@ -13,12 +24,12 @@ import learner._
 '
 
 # SET THESE VARS -----
-PHASE1_MIXWEIGHT <- 0.1  # mixture weight for the posterior distribution after phase 1
-SAVEDIR <- sprintf("cache/2022-03-22_mix%s", PHASE1_MIXWEIGHT)  # main model with mixture weight PHASE1_MIXWEIGHT, no ablations
+PHASE1_MIXWEIGHT <- args$mix_weight  # mixture weight for the posterior distribution after phase 1
+SAVEDIR <- file.path(args$cache_dir, sprintf("2022-03-22_mix%s", PHASE1_MIXWEIGHT))  # main model with mixture weight PHASE1_MIXWEIGHT, no ablations
 createDirs(SAVEDIR)
 
 # sigmoid grid:
-grid <- fread("cache/bias-shape=5-scale=0.10_gain-shape=100-scale=0.10_grid.csv")  # bin size 0.15
+grid <- fread(file.path(args$cache_dir, "bias-shape=5-scale=0.10_gain-shape=100-scale=0.10_grid.csv"))  # bin size 0.15
 s + '
 // create a lookup table for the joint gamma densities of biases and gains
 var bgToP = Map.empty[(Double, Double),Double]
@@ -46,8 +57,8 @@ val prior1 = PriorMaker.makeSigmoidPrior(bgToP, blocksMap(1), false)
 '
 
 # participant data:
-phaseDT <- list(fread(file = '../ignore/output/v2/interventions1.csv'),
-                fread(file = '../ignore/output/v2/interventions2.csv'))
+phaseDT <- list(fread(file = file.path(args$interventions_dir, 'interventions1.csv')),
+                fread(file = file.path(args$interventions_dir, 'interventions2.csv')))
 
 stopifnot(setequal(unique(phaseDT[[1]]$session_id), unique(phaseDT[[2]]$session_id)))
 
