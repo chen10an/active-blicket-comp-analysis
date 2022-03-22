@@ -5,3 +5,5 @@ __pycache__/
 ignore/
 /rational_model/plots/
 *.RData
+.Rproj.user
+*.Rproj

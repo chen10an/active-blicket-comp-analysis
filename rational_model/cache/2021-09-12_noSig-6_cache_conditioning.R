@@ -13,7 +13,7 @@ import learner._
 '
 
 # SET THESE VARS -----
-SAVEDIR <- "cache/main"  # main model, no ablations
+SAVEDIR <- "cache/noSig-6"  # ablate the sigmoid space by considering only an enumerated space of 6 forms (same as experimental manipulations)
 createDirs(SAVEDIR)
 
 # sigmoid grid:
@@ -35,14 +35,18 @@ val blocksMap = Map[Int, Set[Block]](
 )
  
 // choice of phase 1 prior, which will be reused to initialize a phase 1 learner for each participant
-val prior1 = PriorMaker.makeSigmoidPrior(bgToP, blocksMap(1), false)
+
+// not using bias/gain grid in favor of enumerated space of 6 forms (same as experimental manipulations)
+val fformToP = Set(PriorMaker.disj, PriorMaker.conj, PriorMaker.conj3, PriorMaker.noisy_disj, PriorMaker.noisy_conj, PriorMaker.noisy_conj3).map(form => if (form == PriorMaker.disj || form == PriorMaker.noisy_disj) (form, 0.45) else (form, 0.1/4)).toMap
+
+val prior1 = PriorMaker.makeEnumeratedPrior(fformToP, blocksMap(1), false)
 '
 
 getModelInitStr <- function(prior_str) {
   # this phase 1 model init will be called for every participant
   
-  # main model
-  sprintf('new PhaseLearner(%s) with point1FformBinSize', prior_str)
+  # no binsize trait since the enumerated space doesn't need a histogram approximation
+  sprintf('new PhaseLearner(%s)', prior_str)
 }
 
 # participant data:
