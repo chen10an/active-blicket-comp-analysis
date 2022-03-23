@@ -1,12 +1,12 @@
 library(ggplot2)
 library(ggthemes)
 library(ggsci)
-library(ggpubr)
+# library(ggpubr)
 library(RColorBrewer)
 library(viridis)
 library(cowplot)
-library(ggbeeswarm)
-library(ggridges)
+# library(ggbeeswarm)
+# library(ggridges)
 
 myColors <- brewer.pal(n = 8, "Dark2")[2:3]
 myGreen <- brewer.pal(n = 8, "Dark2")[1]

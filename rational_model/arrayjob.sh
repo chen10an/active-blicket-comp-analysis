@@ -36,13 +36,13 @@
 #SBATCH --error=/home/%u/slurm_logs/slurm-%A_%a.out
 
 # Maximum number of nodes to use for the job
-# #SBATCH --nodes=1
+#SBATCH --nodes=1
 
 # Generic resources to use - typically you'll want gpu:n to get n gpus
 # #SBATCH --gres=gpu:1
 
 # Megabytes of RAM required. Check `cluster-status` for node configurations
-#SBATCH --mem=16000
+#SBATCH --mem=8000
 
 # Number of CPUs to use. Check `cluster-status` for node configurations
 #SBATCH --cpus-per-task=1
@@ -51,7 +51,7 @@
 #SBATCH --time=1-06:00:00
 
 # Partition of the cluster to pick nodes from (check `sinfo`)
-#SBATCH --partition=ILCC_CPU
+# #SBATCH --partition=ILCC_CPU
 
 # Any nodes to exclude from selection
 # #SBATCH --exclude=charles[05,12-18]
@@ -84,7 +84,13 @@ set -e
 # N.B. disk could be at /disk/scratch_big, or /disk/scratch_fast. Check
 # yourself using an interactive session, or check the docs:
 #     http://computing.help.inf.ed.ac.uk/cluster-computing
-SCRATCH_DISK=/disk/scratch
+if [ ${SLURM_JOB_NODELIST} == 'duflo' ]
+then
+  SCRATCH_DISK=/disk/scratch3
+else
+  SCRATCH_DISK=/disk/scratch
+fi
+
 SCRATCH_HOME=${SCRATCH_DISK}/${USER}
 mkdir -p ${SCRATCH_HOME}
 
@@ -114,11 +120,15 @@ mkdir -p ${SCRATCH_HOME}
 echo "Moving input data to the compute node's scratch space: $SCRATCH_DISK"
 
 # input data directory path on the DFS
-src_path=/home/${USER}/projects/active-blicket-comp-analysis/ignore/output/v2/
+home_interventions_path=/home/${USER}/projects/active-blicket-comp-analysis/ignore/output/v2
+home_cache_path=/home/${USER}/projects/active-blicket-comp-analysis/rational_model/cache
 
 # input data directory path on the scratch disk of the node
-dest_path=${SCRATCH_HOME}/projects/active-blicket-comp-analysis/ignore/output/v2/
-mkdir -p ${dest_path}  # make it if required
+scratch_interventions_path=${SCRATCH_HOME}/projects/active-blicket-comp-analysis/ignore/output/v2
+scratch_cache_path=${SCRATCH_HOME}/projects/active-blicket-comp-analysis/rational_model/cache
+
+mkdir -p ${scratch_interventions_path}  # make it if required
+mkdir -p ${scratch_cache_path}  # make it if required
 
 # Important notes about rsync:
 # * the --compress option is going to compress the data before transfer to send
@@ -130,7 +140,8 @@ mkdir -p ${dest_path}  # make it if required
 # * for more about the (endless) rsync options, see the docs:
 #       https://download.samba.org/pub/rsync/rsync.html
 
-rsync --archive --update --compress --progress ${src_path}/ ${dest_path}
+rsync --archive --update --compress --progress ${home_interventions_path}/ ${scratch_interventions_path}
+rsync --archive --update --compress --progress ${home_cache_path}/ ${scratch_cache_path}
 
 # ==============================
 # Finally, run the experiment!
@@ -155,9 +166,9 @@ echo "Command ran successfully!"
 
 echo "Moving output data back to DFS"
 
-src_path=${SCRATCH_HOME}/projects/active-blicket-comp-analysis/rational_model/cache
-dest_path=/home/${USER}/projects/active-blicket-comp-analysis/rational_model/cache
-rsync --archive --update --compress --progress ${src_path}/ ${dest_path}
+# src_path=${SCRATCH_HOME}/projects/active-blicket-comp-analysis/rational_model/cache
+# dest_path=/home/${USER}/projects/active-blicket-comp-analysis/rational_model/cache
+rsync --archive --update --compress --progress ${scratch_cache_path}/ ${home_cache_path}
 
 
 # =========================
