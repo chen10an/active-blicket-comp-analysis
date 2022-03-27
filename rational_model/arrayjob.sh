@@ -42,19 +42,19 @@
 # #SBATCH --gres=gpu:1
 
 # Megabytes of RAM required. Check `cluster-status` for node configurations
-#SBATCH --mem=8000
+#SBATCH --mem=16000
 
 # Number of CPUs to use. Check `cluster-status` for node configurations
 #SBATCH --cpus-per-task=1
 
 # Maximum time for the job to run, format: days-hours:minutes:seconds
-#SBATCH --time=1-06:00:00
+#SBATCH --time=3-00:00:00
 
 # Partition of the cluster to pick nodes from (check `sinfo`)
 # #SBATCH --partition=ILCC_CPU
 
 # Any nodes to exclude from selection
-# #SBATCH --exclude=charles[05,12-18]
+#SBATCH --exclude=moser
 
 
 # =====================
