@@ -4,6 +4,9 @@ __pycache__/
 
 ignore/
 /rational_model/plots/
+/rational_model/cache/
+!/rational_model/cache/bias-shape=5-scale=0.10_gain-shape=100-scale=0.10_grid.csv
+
 *.RData
 .Rproj.user
 *.Rproj
