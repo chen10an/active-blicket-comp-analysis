@@ -12,9 +12,11 @@ parser <- OptionParser()
 parser <- add_option(parser, c("-i", "--interventions_dir"), type="character", default="../ignore/output/v2/", 
                      help="Directory with preprocessed interventions data [default %default]")
 parser <- add_option(parser, c("-c", "--cache_dir"), type="character", default="cache", 
-                     help="Directory with cached output [default %default]")
+                     help="Directory with cached output. Don't use a slash at the end (for the sake of correct rsync syntax) [default %default]")
+parser <- add_option(parser, c("-r", "--rsync_dest_cache_dir"), type="character", default="test", help="Destination directory for periodically calling rsync, where the source directory is in --cache_dir. If null, rsync is not called. Don't use a slash at the end (for the sake of correct rsync syntax) [default %default]")
 parser <- add_option(parser, c("-m", "--mix_weight"), type="double", default=1, 
                      help="Mixture weight for the phase 1 posterior distribution [default %default]")
+                    
 args <- parse_args(parser)
 
 s <- scala(JARs = "~/projects/active-overhypo-learner/target/scala-2.13/active-overhypothesis-learner_2.13-0.0.0.jar")
@@ -25,7 +27,7 @@ import learner._
 
 # SET THESE VARS -----
 PHASE1_MIXWEIGHT <- args$mix_weight  # mixture weight for the posterior distribution after phase 1
-SAVEDIR <- file.path(args$cache_dir, sprintf("2022-03-22_mix%s", PHASE1_MIXWEIGHT))  # main model with mixture weight PHASE1_MIXWEIGHT, no ablations
+SAVEDIR <- file.path(args$cache_dir, sprintf("2022-03-28_mix%s", PHASE1_MIXWEIGHT))  # main model with mixture weight PHASE1_MIXWEIGHT, no ablations
 createDirs(SAVEDIR)
 
 # sigmoid grid:
@@ -62,6 +64,15 @@ phaseDT <- list(fread(file = file.path(args$interventions_dir, 'interventions1.c
 
 stopifnot(setequal(unique(phaseDT[[1]]$session_id), unique(phaseDT[[2]]$session_id)))
 
+allParticipants <- unique(phaseDT[[2]]$session_id)
+isCached <- sapply(allParticipants, function(sess) file.exists(file.path(SAVEDIR, sprintf("%s_2.csv", sess))))  # already has their phase 2 cached
+
+notCachedSess <- allParticipants[!isCached]  # participants who still need to be cached
+
+# filter out those who have already been cached
+phaseDT[[1]] <- phaseDT[[1]][session_id %in% notCachedSess]
+phaseDT[[2]] <- phaseDT[[2]][session_id %in% notCachedSess]
+
 # THEN RUN THE REST -----
 
 for (i in 1:length(phaseDT)) {
@@ -83,19 +94,23 @@ pb <- progress_bar$new(
   format = "  caching [:bar] :percent eta: :eta",
   total = length(allSess), clear = FALSE, width= 60)
 
-for (sess in allSess) {
+for (i in 1:length(allSess)) {
+  sess <- allSess[i]
+  pb$message(sess)  # force progress bar to print, esp for slurm log, with info about current sess
   pb$tick()
+  
+  if (!is.null(args$rsync_dest_cache_dir) && (i == 1 || i %% 20 == 0)) {
+    # perform an rsync at the first iteration just as sanity check that it's working
+    
+    command <- sprintf("rsync --archive --update --compress --progress %s/ %s", args$cache_dir, args$rsync_dest_cache_dir)
+    print(sprintf("Performing periodic rsync: %s", command))
+    system(command)
+  }
   
   # initialize for phase 1
   s * sprintf('currLearner = %s', getModelInitStr("prior1"))
   
   for (phase in c(1, 2)) {
-    
-    if(file.exists(file.path(SAVEDIR, sprintf("%s_%s.csv", sess, phase)))) {
-      # already cached this sess and phase, so just continue to the next iteration
-      next
-    }
-    
     dt <- phaseDT[[phase]][session_id == sess]
     
     dtList <- list()
