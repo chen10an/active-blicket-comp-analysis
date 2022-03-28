@@ -96,7 +96,7 @@ pb <- progress_bar$new(
 
 for (i in 1:length(allSess)) {
   sess <- allSess[i]
-  print(sprintf("\nSess %i: %s", i, sess))
+  print(sess)
   # pb$message(sess)  # force progress bar to print, esp for slurm log, with info about current sess
   pb$tick()
   
