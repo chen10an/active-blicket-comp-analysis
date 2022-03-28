@@ -92,7 +92,8 @@ allSess <- unique(phaseDT[[1]]$session_id)
 
 pb <- progress_bar$new(
   format = "  caching [:bar] :percent eta: :eta",
-  total = length(allSess), clear = FALSE, width= 60)
+  total = length(allSess), clear = FALSE, width= 60, show_after = 0)
+pb$tick(0)  # show progress bar right away to quickly sanity check that it's working  
 
 for (i in 1:length(allSess)) {
   sess <- allSess[i]
