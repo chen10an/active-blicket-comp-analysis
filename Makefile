@@ -20,3 +20,8 @@ v2-send:
 	ssh s2064559@ilcc-cluster.inf.ed.ac.uk "mkdir -p ~/projects/active-blicket-comp-analysis/ignore/output/v2/"  # make directories
 	scp ignore/output/v2/interventions1.csv s2064559@ilcc-cluster.inf.ed.ac.uk:~/projects/active-blicket-comp-analysis/ignore/output/v2/interventions1.csv
 	scp ignore/output/v2/interventions2.csv s2064559@ilcc-cluster.inf.ed.ac.uk:~/projects/active-blicket-comp-analysis/ignore/output/v2/interventions2.csv
+
+cache-pull:
+	# pull cache data (model conditioning output) from cluster
+	rsync --archive --update --compress --progress s2064559@ilcc-cluster.inf.ed.ac.uk:~/projects/active-blicket-comp-analysis/rational_model/cache/ ~/projects/active-blicket-comp-analysis/rational_model/cache 
+	
