@@ -14,8 +14,7 @@ parser <- add_option(parser, c("-i", "--interventions_dir"), type="character", d
 parser <- add_option(parser, c("-c", "--cache_dir"), type="character", default="cache", 
                      help="Directory with cached output. Don't use a slash at the end (for the sake of correct rsync syntax) [default %default]")
 parser <- add_option(parser, c("-r", "--rsync_dest_cache_dir"), type="character", default=NULL, help="Destination directory for periodically calling rsync, where the source directory is in --cache_dir. If null, rsync is not called. Don't use a slash at the end (for the sake of correct rsync syntax) [default %default]")
-parser <- add_option(parser, c("-m", "--mix_weight"), type="double", default=1, 
-                     help="Mixture weight for the phase 1 posterior distribution [default %default]")
+
                     
 args <- parse_args(parser)
 
@@ -26,8 +25,7 @@ import learner._
 '
 
 # SET THESE VARS -----
-PHASE1_MIXWEIGHT <- args$mix_weight  # mixture weight for the posterior distribution after phase 1
-SAVEDIR <- file.path(args$cache_dir, sprintf("2022-03-28_mix%s", PHASE1_MIXWEIGHT))  # main model with mixture weight PHASE1_MIXWEIGHT, no ablations
+SAVEDIR <- file.path(args$cache_dir, "2022-04-08_main")  # main model, no ablations
 createDirs(SAVEDIR)
 
 # sigmoid grid:
@@ -85,7 +83,7 @@ s + sprintf('
 var currLearner = %s
 var currEvents:Vector[Event] = Vector.empty[Event]
 
-var currResults: (Array[(Array[Double], Array[Double], Double, Double, Double, Map[Fform, Double], Map[Set[Block], Double], Map[Hyp, Double])], Array[Set[Block]], Dist[Hyp]) = (Array((Array.empty[Double], Array.empty[Double], Double.NaN, Double.NaN, Double.NaN, Map.empty[Fform, Double], Map.empty[Set[Block], Double], Map.empty[Hyp, Double])), Array.empty[Set[Block]], currLearner.hypsDist)
+var currResults: (Array[(Array[Double], Array[Double], Double, Double, Double, Map[Fform, Double], Map[Set[Block], Double], Map[Hyp, Double], Array[Double])], Array[Set[Block]], Dist[Hyp]) = (Array((Array.empty[Double], Array.empty[Double], Double.NaN, Double.NaN, Double.NaN, Map.empty[Fform, Double], Map.empty[Set[Block], Double], Map.empty[Hyp, Double], Array.empty[Double])), Array.empty[Set[Block]], currLearner.hypsDist)
 ', getModelInitStr("prior1"))
 
 allSess <- unique(phaseDT[[1]]$session_id)
@@ -151,10 +149,18 @@ for (i in 1:length(allSess)) {
     sEIGMat <- melt(sEIGMat, id.vars = "nthIntervention", variable.name = "possIntervention", value.name = "structEIG")
     setkey(sEIGMat, nthIntervention, possIntervention)
     
+    jEIGMat <- (s * 'currResults._1.map(_._9)') %>% as.data.table()
+    setnames(jEIGMat, possibleInterventions)
+    jEIGMat[, nthIntervention := dt$nthIntervention]
+    jEIGMat <- melt(jEIGMat, id.vars = "nthIntervention", variable.name = "possIntervention", value.name = "jointEIG")
+    setkey(jEIGMat, nthIntervention, possIntervention)
+    
     # join and check number of rows (num phase interventions x num possible intervention):
-    stopifnot(nrow(fEIGMat) == nrow(sEIGMat))
+    stopifnot(length(unique(c(nrow(fEIGMat), nrow(sEIGMat), nrow(jEIGMat)))) == 1)
     joinedMat <- sEIGMat[fEIGMat]
-    stopifnot(nrow(joinedMat) == nrow(fEIGMat))
+    joinedMat <- jEIGMat[joinedMat]
+    # check all still have the same number of rows
+    stopifnot(length(unique(c(nrow(joinedMat), nrow(fEIGMat), nrow(sEIGMat), nrow(jEIGMat)))) == 1)
     
     setkey(joinedMat, nthIntervention)  # to join with per intervention metrics below
     
@@ -184,10 +190,6 @@ for (i in 1:length(allSess)) {
     resultsDT <- resultsDT[dt[, ..dtCols]]
     stopifnot(nrow(resultsDT) == nrow(joinedMat))
     
-    # testing: pull out and plot phase 1 posterior distribution:
-    # tempDT1 <- getBgpFromCurrResults("currResults._3.fformMarginalAtoms")
-    # plotBgp(tempDT1)
-    
     # save per participant per phase
     saveFile <- sprintf("%s_%s.csv", dt$session_id[1], phase)
     fwrite(resultsDT, file.path(SAVEDIR, saveFile))
@@ -197,13 +199,9 @@ for (i in 1:length(allSess)) {
       s * sprintf('
     val resLearner = %s  // use most up-to-date hypsDist to make a learner with the same assumptions/mixins as currLearner
     
-    currLearner = resLearner.transfer(blocksMap(2), %s, Dist(prior1.fformMarginalAtoms))  // ready for conditioning on data for phase 2
-  ', getModelInitStr("currResults._3"), PHASE1_MIXWEIGHT)
+    currLearner = resLearner.transfer(blocksMap(2))  // ready for conditioning on data for phase 2
+  ', getModelInitStr("currResults._3"))
     }
-    
-    # testing: pull out and plot phase 2 mixed prior distribution
-    # tempDT2 <- getBgpFromCurrResults("currLearner.hypsDist.fformMarginalAtoms")
-    # plotBgp(tempDT2)
   }
 }
 

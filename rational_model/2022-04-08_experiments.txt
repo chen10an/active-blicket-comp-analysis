@@ -1,0 +1,4 @@
+Rscript 2022-04-08_main_cache_conditioning.R --interventions_dir ${scratch_interventions_path} --cache_dir ${scratch_cache_path} --rsync_dest_cache_dir ${home_cache_path}
+Rscript 2022-04-08_noP1_cache_conditioning.R --interventions_dir ${scratch_interventions_path} --cache_dir ${scratch_cache_path} --rsync_dest_cache_dir ${home_cache_path}
+Rscript 2022-04-08_noSig-1_cache_conditioning.R --interventions_dir ${scratch_interventions_path} --cache_dir ${scratch_cache_path} --rsync_dest_cache_dir ${home_cache_path}
+Rscript 2022-04-08_noSig-6_cache_conditioning.R --interventions_dir ${scratch_interventions_path} --cache_dir ${scratch_cache_path} --rsync_dest_cache_dir ${home_cache_path}
