@@ -72,10 +72,26 @@ my_vars['completionTime'] = f'{mean_completion_min} minutes'
 ##
 
 # this is for blicket questions only:
-mean_bonus = end_df.total_bonus.mean()
-mean_total_comp = mean_bonus + 1.28
-my_vars['blicketTotalComp'] = f'{mean_total_comp:.2f}'  # 2 decimal places
-my_vars['hourlyBlicketTotalComp'] = f'{(mean_total_comp/mean_completion_min*60):.2f}'  # 2 decimal places
+mean_blicket_bonus = end_df.total_bonus.mean()
+my_vars['blicketComp'] = f'{mean_blicket_bonus:.2f}'  # 2 decimal places
+my_vars['blicketTotalComp'] = f'{(mean_blicket_bonus + 1.28):.2f}'  # 2 decimal places
+my_vars['hourlyBlicketTotalComp'] = f'{((mean_blicket_bonus + 1.28)/mean_completion_min*60):.2f}'  # 2 decimal places
+
+##
+teaching_209_df = pd.read_csv(os.path.join(OUTPUT_DIR_PATH, 'coding/bonus_teaching_coding_first209_full.csv'))
+teaching_41_df = pd.read_csv(os.path.join(OUTPUT_DIR_PATH, 'coding/bonus_teaching_coding_last41_full.csv'))
+teaching_all_df = pd.concat([teaching_209_df, teaching_41_df])
+assert(teaching_all_df.shape[0] == 250)
+mean_teaching_bonus = teaching_all_df.BonusAmount.mean()
+
+my_vars['teachingComp'] = f'{mean_teaching_bonus:.2f}'  # 2 decimal places
+my_vars['teachingTotalComp'] = f'{(mean_teaching_bonus + 1.28):.2f}'  # 2 decimal places
+my_vars['hourlyTeachingTotalComp'] = f'{((mean_teaching_bonus + 1.28)/mean_completion_min*60):.2f}'  # 2 decimal places
+
+##
+mean_total_comp = mean_blicket_bonus + mean_teaching_bonus + 1.28
+my_vars['totalComp'] = f'{mean_total_comp:.2f}'  # 2 decimal places
+my_vars['hourlyTotalComp'] = f'{(mean_total_comp/mean_completion_min*60):.2f}'  # 2 decimal places
 
 ##
 with open(SAVE_PATH, 'w') as f:

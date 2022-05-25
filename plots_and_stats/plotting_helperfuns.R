@@ -5,7 +5,7 @@ library(ggsci)
 library(RColorBrewer)
 library(viridis)
 library(cowplot)
-# library(ggbeeswarm)
+library(ggbeeswarm)
 # library(ggridges)
 
 myColors <- brewer.pal(n = 8, "Dark2")[2:3]
