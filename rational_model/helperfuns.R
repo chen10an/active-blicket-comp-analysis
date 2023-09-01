@@ -114,9 +114,11 @@ plotBgp <- function(bgpDT) {
   
   allLines <- gridSamples[, getActivationDT(.SD), by=rownames(gridSamples)]
   allLinesP <- ggplot(allLines, aes(x = ns, y = ys, group = rownames)) +
-    geom_line(alpha = 0.1)
+    geom_line(alpha = 0.1) +
+    theme_mine() + 
+    theme(panel.grid.major.x = element_line( size=.3, color="light gray"))
   
   # then combine with the top row for final plot
-  finalPlot <- plot_grid(p, allLinesP, ncol = 2, labels = "AUTO")
+  finalPlot <- plot_grid(p, allLinesP, ncol = 2)
   finalPlot
 }

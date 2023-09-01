@@ -44,14 +44,12 @@ legend <- get_legend(plotSess("NUC1Zp1CqK4h3vT4okD2FAkSxWMS9gVb"))
 
 hbmP <- plotSess("NUC1Zp1CqK4h3vT4okD2FAkSxWMS9gVb") + ggtitle("HBM Participant") + theme(legend.position = "none")
 
-noTransferP <- plotSess("bh9MvmNflP9cVw63DvOMSx9qFBTWRkY0") + ggtitle("No Transfer Participant") + theme(legend.position = "none")
+noTransferP <- plotSess("bh9MvmNflP9cVw63DvOMSx9qFBTWRkY0") + ggtitle("No-Transfer Participant") + theme(legend.position = "none")
 
-structOnlyP <- plotSess("ye7cOoHSbasWoqnJrdnCf3adcQ5IlM4C") + ggtitle("Structure-Only EIG Participant") + theme(legend.position = "none")
+structOnlyP <- plotSess("ye7cOoHSbasWoqnJrdnCf3adcQ5IlM4C") + ggtitle("Structure-Only-EIG Participant") + theme(legend.position = "none")
 
 randP <- plotSess("kr7cXcBBAXw8qObaZeOrb9l9FSuds2bQ") + ggtitle("Random Participant") + theme(legend.position = "none")
 
-allP <- plot_grid(hbmP, noTransferP, structOnlyP, randP, legend, ncol = 1, rel_heights = c(rep(0.93/4, 4), 0.07))
-
-plot_grid(hbmP, noTransferP, structOnlyP, randP, legend, ncol = 1, rel_heights = c(rep(0.98/4, 4), 0.02))
+allP <- plot_grid(hbmP, noTransferP, structOnlyP, randP, legend, ncol = 1, rel_heights = c(rep(0.93/4, 4), 0.07), labels = c("a", "b", "c", "d"), label_size = 10, hjust = 0, vjust = 1.15)
 
 save_plot(filename = "../../../Dropbox/drafts/2021-Feb_active_overhypo_modeling/imgs/example_ind.pdf", plot = allP, base_height = NULL, base_width = 5, base_asp = 0.7)
