@@ -122,3 +122,21 @@ plotBgp <- function(bgpDT) {
   finalPlot <- plot_grid(p, allLinesP, ncol = 2)
   finalPlot
 }
+
+
+load_fits <- function(path, modelName) {
+  # load an RData file containing fits (of softmax temp and struct vs form weights)
+  
+  local({
+    load(path)  # should put the `fits` var into this isolated local env
+    means <- lapply(fits, function(sess) mean(unlist(lapply(sess, function(fold) fold$testMarginalMeanPredLik))))
+    meanDT <- data.table(session_id = names(means), mean = means)
+    meanDT[, model := modelName]
+    
+    trainFits <- lapply(fits, function(sess) rbindlist(lapply(sess, function(fold) fold$bestTrainFit)))
+    trainFitDT <- rbindlist(trainFits, idcol = "session_id")
+    trainFitDT[, model := modelName]
+    
+    return(list(meanDT, trainFitDT))
+  })
+}
