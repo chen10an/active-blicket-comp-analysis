@@ -124,7 +124,7 @@ plotBgp <- function(bgpDT) {
 }
 
 
-load_fits <- function(path, modelName) {
+loadFits <- function(path, modelName) {
   # load an RData file containing fits (of softmax temp and struct vs form weights)
   
   local({
@@ -139,4 +139,43 @@ load_fits <- function(path, modelName) {
     
     return(list(meanDT, trainFitDT))
   })
+}
+
+getBestModelDT <- function(fitFiles) {
+  # Compare the different models and their fits in fit_files via the
+  # posterior probability of each model p(model|participant) and return a DT
+  # associating the best model to each participant.
+  
+  # fitFiles should have these names and contain the corresponding fitting results
+  stopifnot(setequal(names(fitFiles), c("main", "noP1", "noInfo", "noSig1")))
+  
+  modelNames <- c(
+    main = "HBM", 
+    noP1 = "No-Transfer", 
+    noInfo = "Structure-Only-EIG",
+    noSig1 = "Fixed-Form")
+  
+  # load fits and put the resulting DTs into environment variables
+  for (n in names(fitFiles)) {
+    list2env(
+      setNames(
+        loadFits(fitFiles[n], modelNames[n]), 
+        c(sprintf("%sMeanDT", n), sprintf("%sTrainFitDT", n))),
+      envir = environment())
+  }
+  
+  # add random model
+  randomDT <- data.table(session_id = mainMeanDT$session_id, mean = 1/64, model = "Random")
+  
+  # OBS: random model comes first so it gets picked when another model (i.e., noSig1) has the same predictive likelihood as the random level
+  compareDT <- rbind(randomDT, mainMeanDT, noP1MeanDT, noInfoMeanDT, noSig1MeanDT)
+  
+  # compute posterior probabilities of each model p(model | sess), assuming a uniform prior
+  compareDT[, mean := unlist(mean)]  # list data struct seems to be remaining from fits
+  compareDT[, posterior := mean/sum(mean), by = session_id]
+  
+  # get the best model per participant, i.e., highest p(model | sess)
+  bestDT <- compareDT[, .(bestModel = .SD$model[which.max(posterior)], bestPosterior = .SD$posterior[which.max(posterior)]), by=session_id]
+  
+  bestDT
 }
