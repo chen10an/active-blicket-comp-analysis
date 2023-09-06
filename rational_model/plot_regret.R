@@ -48,21 +48,27 @@ for (sess in mainDT$session_id) {
     
     actualDT <- sessDT[possIntervention == actualIntervention, .(formEIG, structEIG), by = nthIntervention]
     bestDT <- sessDT[, .(formEIG = max(formEIG), structEIG = max(structEIG)), by = nthIntervention]
+    worstDT <- sessDT[, .(formEIG = min(formEIG), structEIG = min(structEIG)), by = nthIntervention]
     
     # should be same length as num intervention in phase 
     stopifnot(nrow(actualDT) == 20)
     stopifnot(nrow(bestDT) == 20)
+    stopifnot(nrow(worstDT) == 20)
     
     # make sure everything is ordered by nthIntervention
     setorder(actualDT, nthIntervention)
     setorder(bestDT, nthIntervention)
+    setorder(worstDT, nthIntervention)
     
-    # compute loss and normalize wrt the maximum possible eig at each intervention index
-    # so that form and structure EIG differences/losses are put on the same scale, i.e.,
-    # 0-1 relative to the max eig
+    # normalize wrt the maximum and minimum possible eig at each intervention index
+    # so that form and structure EIG differences (to the max) are put on the same scale
+    # i.e., 0-1 relative to the max and min eig
+    normalize <- function(eigs, maxes, mins) {(eigs - mins)/(maxes-mins)}
     loss <- function(eigs) {-eigs}
-    actualDT[, c("formLoss", "structLoss") := list(loss(formEIG) / bestDT$formEIG, loss(structEIG) / bestDT$structEIG)]
-    bestDT[, c("formLoss", "structLoss") := list(loss(formEIG) / formEIG, loss(structEIG) / structEIG)]
+    
+    
+    actualDT[, c("formLoss", "structLoss") := list(loss(normalize(formEIG, bestDT$formEIG, worstDT$formEIG)), loss(normalize(structEIG, bestDT$structEIG, worstDT$structEIG)))]
+    bestDT[, c("formLoss", "structLoss") := list(loss(normalize(formEIG, formEIG, worstDT$formEIG)), loss(normalize(structEIG, structEIG, worstDT$structEIG)))]
     
     # compute running mean of the loss, i.e., the mean at time t should include all
     # losses from time 0 to t
