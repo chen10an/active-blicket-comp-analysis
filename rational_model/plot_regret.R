@@ -98,10 +98,10 @@ stopifnot(nrow(regretDT) == length(mainDT$session_id) * 20)  # num participants 
 meanRegretDT <- regretDT[, .(formRegretMean = mean(formRegret), formRegretSE = se(formRegret), structRegretMean = mean(structRegret), structRegretSE = se(structRegret)), by = nthIntervention]
   
 p <- ggplot(meanRegretDT, aes(x = nthIntervention)) +
-  geom_line(aes(y = (1 - formRegretMean), color = "Overhypothesis")) +
-  geom_ribbon(aes(ymin = (1 - formRegretMean) - formRegretSE, ymax = (1 - formRegretMean) + formRegretSE, fill = "Overhypothesis"), alpha = 0.3) +
-  geom_line(aes(y = (1 - structRegretMean), color = "Causal Structure")) +
-  geom_ribbon(aes(ymin = (1 - structRegretMean) - structRegretSE, ymax = (1 - structRegretMean) + structRegretSE, fill = "Causal Structure"), alpha = 0.3) +
+  geom_line(aes(y = formRegretMean, color = "Overhypothesis")) +
+  geom_ribbon(aes(ymin = formRegretMean - formRegretSE, ymax = formRegretMean + formRegretSE, fill = "Overhypothesis"), alpha = 0.3) +
+  geom_line(aes(y = structRegretMean, color = "Causal Structure")) +
+  geom_ribbon(aes(ymin = structRegretMean - structRegretSE, ymax = structRegretMean + structRegretSE, fill = "Causal Structure"), alpha = 0.3) +
   scale_color_manual(
     name = "Information Type",
     breaks = c("Overhypothesis", "Causal Structure"),
@@ -112,7 +112,7 @@ p <- ggplot(meanRegretDT, aes(x = nthIntervention)) +
     values = c(myColors[1], myColors[2])) +
   theme_mine() +
   xlab("Intervention") +
-  ylab("Closeness to Max. EIG\n(1 - Mean Regret)") +
+  ylab("Information Loss\n(Regret)") +
   ylim(c(0,1))
 
 p

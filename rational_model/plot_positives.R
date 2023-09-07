@@ -21,13 +21,17 @@ outcomeDT <- bestDT[outcomeDT, on = "session_id"]
 outcomeDT <- outcomeDT[, .(numPos = sum(outcome)), by = .(bestModel, session_id)]
 
 # order for plotting
-outcomeDT[, bestModel := factor(bestModel, levels=c("HBM", "No-Transfer", "Structure-Only-EIG", "Fixed-Form", "Random"))]
+# outcomeDT[, bestModel := factor(bestModel, levels=c("HBM", "No-Transfer", "Structure-Only-EIG", "Fixed-Form", "Random"))]
 
-p <- ggplot(outcomeDT, aes(x=bestModel, y=numPos, fill=bestModel)) +
+# group by random vs not random
+outcomeDT[bestModel == "Random", bestModelGroup := "Random"]
+outcomeDT[bestModel != "Random", bestModelGroup := "HBM and Ablations"]
+
+p <- ggplot(outcomeDT, aes(x=bestModelGroup, y=numPos, fill=bestModelGroup)) +
   geom_boxplot() +
-  scale_fill_manual(values=c(brewer.pal(n = 8, "Dark2")[1:4], myGray)) +
-  xlab("Participant's best model") +
-  ylab("Num. positives") +
+  scale_fill_manual(values=c(brewer.pal(n = 8, "Dark2")[1], myGray)) +
+  xlab("Participant's Best Model") +
+  ylab("Num. Positives") +
   guides(fill="none") +
   theme_mine() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
