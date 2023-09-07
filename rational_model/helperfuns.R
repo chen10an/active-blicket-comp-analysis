@@ -17,10 +17,11 @@ saveDT <- function(DT, dirpath, filename) {
 }
 
 softmax <- function(vec, temperature) {
-  beta <- 1/temperature
-  numerators = exp(vec*beta)
-  denom = sum(numerators)
-  numerators/denom
+  # numerical stable softmax based on https://timvieira.github.io/blog/post/2014/02/11/exp-normalize-trick/:
+  x = vec*1/temp
+  b = max(x)
+  y = exp(x - b)
+  y / sum(y)
 }
 # softmax(c(0, 10), 100)
 # 0.4750208 0.5249792
