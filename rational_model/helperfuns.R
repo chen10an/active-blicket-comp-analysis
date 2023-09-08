@@ -16,7 +16,7 @@ saveDT <- function(DT, dirpath, filename) {
   print(sprintf("Saved to %s!", fullPath))
 }
 
-softmax <- function(vec, temperature) {
+softmax <- function(vec, temp) {
   # numerical stable softmax based on https://timvieira.github.io/blog/post/2014/02/11/exp-normalize-trick/:
   x = vec*1/temp
   b = max(x)
