@@ -2,11 +2,10 @@ library(data.table)
 library(magrittr)
 source("helperfuns.R")
 
-files <- c(main = "cache/2022-04-18_main/fits_allTestPredLikPerInt_useStructEIG=FALSE_individuals/all.RData",
-           noP1 = "cache/2022-04-18_noP1/fits_allTestPredLikPerInt_useStructEIG=FALSE_individuals/all.RData",
-           noInfo = "cache/2022-04-18_main/fits_allTestPredLikPerInt_useStructEIG=TRUE_individuals/all.RData",
-           noSig1 = "cache/2022-04-08_noSig-1/fits_allTestPredLikPerInt_useStructEIG=FALSE_individuals/all.RData")
-modelNames <- c("HBM", "No-Transfer", "Structure-Only-EIG", "Fixed-Form")
+files <- c(main = "cache/2022-04-18_main/fits_allTestPredLikPerInt_useStructEIG=FALSE_normalize=TRUE_individuals/all.RData",
+           noP1 = "cache/2022-04-18_noP1/fits_allTestPredLikPerInt_useStructEIG=FALSE_normalize=TRUE_individuals/all.RData",
+           noInfo = "cache/2022-04-18_main/fits_allTestPredLikPerInt_useStructEIG=TRUE_normalize=TRUE_individuals/all.RData",
+           noSig1 = "cache/2022-04-08_noSig-1/fits_allTestPredLikPerInt_useStructEIG=FALSE_normalize=TRUE_individuals/all.RData")
 
 bestDT <- getBestModelDT(files)
 

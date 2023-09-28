@@ -168,6 +168,11 @@ getBestModelDT <- function(fitFiles) {
   # add random model
   randomDT <- data.table(session_id = mainMeanDT$session_id, mean = 1/64, model = "Random")
   
+  # check dts all contain the total number of participants
+  for (dt in list(randomDT, mainMeanDT, noP1MeanDT, noInfoMeanDT, noSig1MeanDT)) {
+    stopifnot(length(unique(dt$session_id)) == 250)
+  }
+  
   # OBS: random model comes first so it gets picked when another model (i.e., noSig1) has the same predictive likelihood as the random level
   compareDT <- rbind(randomDT, mainMeanDT, noP1MeanDT, noInfoMeanDT, noSig1MeanDT)
   
