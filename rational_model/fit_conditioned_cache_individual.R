@@ -10,10 +10,29 @@ set.seed(0) # reproducible shuffling for making cv splitss
 parser <- OptionParser()
 parser <- add_option(parser, c("-c", "--cache_dir"), type="character", default="~/projects/active-blicket-comp-analysis/rational_model/cache", 
                      help="Directory with cached output. [default %default]")
+parser <- add_option(parser, c("-i", "--interventions_dir"), type="character", default="../ignore/output/v2/",
+                     help="Directory with preprocessed interventions data [default %default]")
 parser <- add_option(parser, c("-m", "--model_subdir"), type="character", default=NULL, 
                      help="A subdirectory of --cache_dir containing the cached output for a specific model, which should then have subdirectories corresponding to running this model with different priors. Give this subdirectory path relative to --cache_dir [default %default]")
 parser <- add_option(parser, c("-s", "--useStructEIG"), action="store_true", default=FALSE, help="Instead of using both form and structure EIG for calculating predictive likelihoods, use only the marginal structure EIG [default %default]")
+parser <- add_option(parser, c("-n", "--normalize"), action="store_true", default=FALSE, help="Normalize form and structure EIGs to the same 0-1 scale before performing a weighted addition [default %default]")
 args <- parse_args(parser)
+
+# for fuzzy float comparison:
+EPS <- 1e-5
+
+# for normalizing EIG values to 0-1:
+normalize <- function(eigs) {
+  maxeig <- max(eigs)
+  mineig <- min(eigs)
+  if ((maxeig-mineig) == 0){
+    # all eigs are zeros or are the same, in which case we would want softmax
+    # to weight them equally; returning all zeros would produce this effect
+    return(rep(0, length(eigs)))
+  } else {
+    return((eigs-mineig)/(maxeig-mineig))
+  }
+}
 
 # SET VARS -----
 if (args$useStructEIG) {
@@ -36,13 +55,13 @@ if (args$model_subdir == "2022-04-08_noSig-1") {
   PRIORDIRS <- PRIORDIRS[2:length(PRIORDIRS)]  # exclude the parent directory itself
 }
 
-SAVEDIR <- file.path(FULLMODELDIR, sprintf("fits_allTestPredLikPerInt_useStructEIG=%s_individuals", args$useStructEIG))
+SAVEDIR <- file.path(FULLMODELDIR, sprintf("fits_allTestPredLikPerInt_useStructEIG=%s_normalize=%s_individuals", args$useStructEIG, args$normalize))
 createDirs(SAVEDIR)
 
 PRIORDIRS <- PRIORDIRS[!grepl("fits_allTestPredLikPerInt_useStructEIG", normalizePath(PRIORDIRS))]  # exclude SAVEDIR
 
 # make an ordered vector of participant session ids, to be indexed by the shuffled indices stored in `folds`
-participantDT <- fread(file =  "../ignore/output/v2/interventions2.csv")
+participantDT <- fread(file = file.path(args$interventions_dir, "interventions2.csv"))
 orderedParticipants <- participantDT$session_id %>% unique()
 # data.table(orderedParticipants) %>% fwrite("cache/orderedParticipants.csv")  # save a record of the order used
 
@@ -78,7 +97,7 @@ createIntFolds <- function(numInt=20, nfolds=4) {
 print(sprintf("%s: Fitting phase 2 model results to individuals, marginalized over priors.", FULLMODELDIR))
 
 print("Loading in model results for each prior.")
-pb <- progress_bar$new(total = length(orderedParticipants))
+pb <- progress_bar$new(total = length(orderedParticipants), force = TRUE)
 sessToPriorToModelRes <- list()
 for (sess in orderedParticipants) {
   pb$tick()
@@ -91,7 +110,8 @@ for (sess in orderedParticipants) {
 
 pb <- progress_bar$new(
   format = "  fitting [:bar] :percent eta: :eta",
-  total = length(orderedParticipants), clear = FALSE, width= 60, show_after = 0)
+  total = length(orderedParticipants), clear = FALSE, width= 60, show_after = 0,
+  force = TRUE)
 
 fits <- list()
 for (sess in orderedParticipants) {
@@ -123,11 +143,21 @@ for (sess in orderedParticipants) {
           
           toFitDT <- copy(trainDT)
           
+          if (args$normalize) {
+            # normalize so that struct and form EIGs are on the same 0-1 scale
+            toFitDT[, structEIG := normalize(structEIG), by = .(session_id, nthIntervention)]
+            toFitDT[, formEIG := normalize(formEIG), by = .(session_id, nthIntervention)]
+          }
+          
           toFitDT[, addedEIG := weightedAdd(structEIG, formEIG, structw)]
           toFitDT[, predLik := softmax(addedEIG, temp), by=.(session_id, nthIntervention)]
+
+		      # check softmax outputs are numerically stable and are probabilities
+          stopifnot(!is.na(toFitDT$predLik))
+          stopifnot(all(toFitDT[, sum(predLik) < 1 + EPS, by=nthIntervention]) && all(toFitDT[, sum(predLik) > 1 - EPS, by=nthIntervention]))
           
           # mean predictive likelihood over all participants' interventions (no grouping, only filtering to get predLik on possIntervention when possIntervention=actualIntervention)
-          meanPredLik <- toFitDT[actualIntervention == possIntervention, mean(predLik, na.rm = TRUE)]
+          meanPredLik <- toFitDT[actualIntervention == possIntervention, mean(predLik)]
           
           priorFits[[priordir]] <- data.table(temp=temp, structw=structw, meanPredLik=meanPredLik)
         }
@@ -143,7 +173,9 @@ for (sess in orderedParticipants) {
     
     paramFitDT <- rbindlist(paramFits)
     
-    bestFit <- paramFitDT[marginalMeanPredLik == max(marginalMeanPredLik, na.rm = TRUE)]
+    stopifnot(!is.na(paramFitDT$marginalMeanPredLik))
+    
+    bestFit <- paramFitDT[marginalMeanPredLik == max(marginalMeanPredLik)]
     
     if (nrow(bestFit) > 1) {  # just choose one of the best fits
       bestFit <- bestFit[1]
@@ -157,9 +189,20 @@ for (sess in orderedParticipants) {
       # collapse id columns into one sorted (low to high id) string that can be compared with possibleInterventions
       testDT[, actualIntervention := idColsToStr(testDT, 0:5)]
       
+      if (args$normalize) {
+        # normalize so that struct and form EIGs are on the same 0-1 scale
+        testDT[, structEIG := normalize(structEIG), by = .(session_id, nthIntervention)]
+        testDT[, formEIG := normalize(formEIG), by = .(session_id, nthIntervention)]
+      }
+      
       testDT[, addedEIG := weightedAdd(structEIG, formEIG, bestFit$structw)]
       testDT[, predLik := softmax(addedEIG, bestFit$temp), by=.(session_id, nthIntervention)]
-      testPredLik <- testDT[actualIntervention == possIntervention, .(mean = mean(predLik, na.rm = TRUE), se = se(predLik))]
+
+	    # check softmax outputs are numerically stable and are probabilities
+      stopifnot(!is.na(testDT$predLik))
+      stopifnot(all(testDT[, sum(predLik) < 1 + EPS, by=nthIntervention]) && all(testDT[, sum(predLik) > 1 - EPS, by=nthIntervention]))
+
+      testPredLik <- testDT[actualIntervention == possIntervention, .(mean = mean(predLik), se = se(predLik))]
       
       priorTests[[priordir]] <- testPredLik
     }
